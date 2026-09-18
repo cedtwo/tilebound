@@ -18,6 +18,15 @@ other offsetting (See [`Vertex`](crate::topology::vertex::Vertex) and [`Edge`](c
 - Various helper methods and operations for initializing a delta, sweeping over a delta, checking tiles on-demand
 and updating stale collisions (See [`crate::ops`]).
 
+### Implementations
+
+See the following crates for feature-complete (but experimental) `tilebound` implementations:
+
+Name | Description
+---|---
+[`tilebound_solid`](https://crates.io/crates/tilebound_solid) | A small boolean/bit tilemap collision libary and a simple example of `tilebound` usage.
+[`tilebound_halfslope`](https://crates.io/crates/tilebound_halfslope) | A tilemap collision libary supporting slopes and one-way tiles.
+
 ### Features
 
 `tilebound` exposes various [`TileMap`](crate::view::tilemap::TileMap) and [`TileMapView`](crate::view::tilemap::TileMapView)
