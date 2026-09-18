@@ -1,11 +1,18 @@
 [package]
 name = "tilebound_halfslope"
+authors = ["Christopher Edward Dawn"]
 version = "0.1.0"
 edition = "2024"
+description = "A tilemap collision libary supporting half-tile slopes."
+readme = "README.md"
+repository = "https://github.com/cedtwo/tilebound.git"
+license = "MIT OR Apache-2.0"
+keywords = ["tilemap", "physics", "collision", "platformer", "topdown"]
+categories = ["game-development"]
 
 [dependencies]
 marker_value = { version = "0.1.0" }
-tilebound = { path = "../../" }
+tilebound = { version = "0.1.0" }
 bitvec = "1.1.1"
 
 [dev-dependencies]

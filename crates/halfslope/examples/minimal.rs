@@ -127,13 +127,6 @@ async fn main() {
             20.0,
             BLACK,
         );
-        draw_text(
-            "Press C to toggle tile collisions",
-            20.0,
-            (map.size().y() as f32 + 2.0) * Sc::SCALE,
-            20.0,
-            BLACK,
-        );
 
         next_frame().await
     }
