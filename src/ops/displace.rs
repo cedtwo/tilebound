@@ -1,15 +1,15 @@
 //! Displacement helper functions.
 use std::ops::ControlFlow;
 
-use tilebound_plane::axis::Axis;
-use tilebound_plane::endpoint::EndpointRange;
-use tilebound_plane::scale::Scale;
-use tilebound_schema::brk::Break;
-use tilebound_schema::delta::Delta;
-use tilebound_schema::scene::Scene;
-use tilebound_schema::state::State;
-use tilebound_topology::vertex::Vertex;
-use tilebound_view::tilemap::TileMap;
+use crate::plane::axis::Axis;
+use crate::plane::endpoint::EndpointRange;
+use crate::plane::scale::Scale;
+use crate::schema::brk::Break;
+use crate::schema::delta::Delta;
+use crate::schema::scene::Scene;
+use crate::schema::state::State;
+use crate::topology::vertex::Vertex;
+use crate::view::tilemap::TileMap;
 
 /// Handle out-of-bounds displacement toward, or parallel to the map. Expects a [`Delta::target`]
 /// [`Vertex`].
@@ -118,10 +118,10 @@ where
 mod tests {
 
     use super::*;
-    use tilebound_plane::axis::{AxisMask, AxisX};
-    use tilebound_plane::endpoint::Endpoint;
-    use tilebound_plane::scale::ConSc;
-    use tilebound_view::tilemap::ArrayMap;
+    use crate::plane::axis::{AxisMask, AxisX};
+    use crate::plane::endpoint::Endpoint;
+    use crate::plane::scale::ConSc;
+    use crate::view::tilemap::ArrayMap;
 
     type Sc = ConSc<16>;
 

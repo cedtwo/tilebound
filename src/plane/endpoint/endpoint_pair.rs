@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use crate::endpoint::Endpoint;
+use crate::plane::endpoint::Endpoint;
 
 /// # EndpointPair
 ///

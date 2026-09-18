@@ -3,8 +3,8 @@ use std::fmt::Display;
 use std::marker::PhantomData;
 use std::ops::{Neg, Range};
 
-use tilebound_plane::axis::{Axis, AxisVec};
-use tilebound_plane::endpoint::{Endpoint, EndpointPair, EndpointRange};
+use crate::plane::axis::{Axis, AxisVec};
+use crate::plane::endpoint::{Endpoint, EndpointPair, EndpointRange};
 
 /// # SliceIndex
 ///
@@ -174,7 +174,7 @@ impl<A: Axis> Error for SliceIndexError<A> {}
 mod tests {
 
     use super::*;
-    use tilebound_plane::axis::AxisX;
+    use crate::plane::axis::AxisX;
 
     #[test]
     fn try_new() {

@@ -1,6 +1,6 @@
-use crate::index::SliceIndex;
-use crate::tilemap::TileMapView;
-use tilebound_plane::axis::Axis;
+use crate::plane::axis::Axis;
+use crate::view::index::SliceIndex;
+use crate::view::tilemap::TileMapView;
 
 /// # TileMapInspect
 ///

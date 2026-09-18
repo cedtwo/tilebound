@@ -1,10 +1,10 @@
 use std::{fmt::Debug, iter};
 
-use tilebound_plane::axis::Axis;
-use tilebound_plane::endpoint::Endpoint;
-use tilebound_plane::scale::Scale;
-use tilebound_topology::edge::Edge;
-use tilebound_topology::vertex::{Vertex, VertexOffset};
+use crate::plane::axis::Axis;
+use crate::plane::endpoint::Endpoint;
+use crate::plane::scale::Scale;
+use crate::topology::edge::Edge;
+use crate::topology::vertex::{Vertex, VertexOffset};
 
 /// # Delta
 ///
@@ -249,8 +249,8 @@ impl<A: Axis> Delta<A> {
 mod tests {
 
     use super::*;
-    use tilebound_plane::axis::AxisX;
-    use tilebound_plane::scale::ConSc;
+    use crate::plane::axis::AxisX;
+    use crate::plane::scale::ConSc;
 
     type S = ConSc<16>;
 

@@ -4,8 +4,8 @@ use std::ops::{Deref, Range};
 use marker_value::MarkerValue;
 use subbyte_index::{BitOrd, BitWidth, Lsb, SubByteIndex};
 
-use crate::tilemap::{TileMap, TileMapView};
-use tilebound_plane::axis::{Axis, AxisX, AxisY};
+use crate::plane::axis::{Axis, AxisX, AxisY};
+use crate::view::tilemap::{TileMap, TileMapView};
 
 /// # PackMap
 ///
@@ -17,8 +17,8 @@ use tilebound_plane::axis::{Axis, AxisX, AxisY};
 /// example of instantiating a packed array and passing it to `PackMap`.
 /// ```
 /// # use subbyte_index::*;
-/// # use tilebound_plane::axis::*;
-/// # use tilebound_view::tilemap::{PackMap, TileMap, TileMapView};
+/// # use tilebound::prelude::*;
+/// # use tilebound::view::tilemap::{PackMap, TileMap, TileMapView};
 /// // Bit width = 4.
 /// type W = W4;
 /// // 25 elements total.

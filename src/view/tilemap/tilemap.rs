@@ -1,7 +1,7 @@
 use std::ops::{Deref, Range};
 
-use tilebound_plane::axis::{Axis, AxisVec, AxisX, AxisY};
-use tilebound_plane::endpoint::{Endpoint, EndpointRange};
+use crate::plane::axis::{Axis, AxisVec, AxisX, AxisY};
+use crate::plane::endpoint::{Endpoint, EndpointRange};
 
 /// # TileMap
 ///

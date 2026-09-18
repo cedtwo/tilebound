@@ -1,9 +1,9 @@
 use std::ops::Range;
 
+use crate::plane::axis::{Axis, AxisVec, AxisX, AxisY};
 use marker_value::MarkerValue;
-use tilebound_plane::axis::{Axis, AxisVec, AxisX, AxisY};
 
-use crate::tilemap::{TileMap, TileMapView};
+use crate::view::tilemap::{TileMap, TileMapView};
 
 /// A simple two dimensional array implementation. Requires specifying the number of rows and
 /// columns (`X` and `Y` respectively), and the total number of elements, `N`.

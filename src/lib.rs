@@ -28,10 +28,10 @@
 //! `arraymap` | Exports tilemap implementations build on `std` types. | [`ArrayMap`](crate::prelude::ArrayMap), [`VecMap`](crate::prelude::VecMap)
 //! `bitmap` | Exports a `bitvec` backed tilemap (where each tile represents one bit). | [`BitMap`](crate::prelude::BitMap)
 //! `packmap` | Exports an *experimental* bitfield backed tilemap (where each tile represents `2` or `4` bits). | [`packmap`](crate::prelude::PackMap)
-pub use tilebound_plane as plane;
-pub use tilebound_schema as schema;
-pub use tilebound_topology as topology;
-pub use tilebound_view as view;
+pub mod plane;
+pub mod schema;
+pub mod topology;
+pub mod view;
 
 pub mod ops;
 
@@ -48,11 +48,11 @@ pub mod prelude {
     pub use crate::view::tilemap::{TileMap, TileMapView};
 
     #[cfg(feature = "bitmap")]
-    pub use tilebound_view::tilemap::BitMap;
+    pub use crate::view::tilemap::BitMap;
     #[cfg(feature = "packmap")]
-    pub use tilebound_view::tilemap::PackMap;
+    pub use crate::view::tilemap::PackMap;
     #[cfg(feature = "arraymap")]
-    pub use tilebound_view::tilemap::{ArrayMap, VecMap};
+    pub use crate::view::tilemap::{ArrayMap, VecMap};
 
     #[cfg(feature = "bitmap")]
     pub use bitvec;

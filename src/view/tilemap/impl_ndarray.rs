@@ -3,8 +3,8 @@ use std::ops::Range;
 use marker_value::MarkerValue;
 use ndarray::{ArrayView1, s};
 
-use crate::tilemap::{TileMap, TileMapView};
-use tilebound_plane::axis::{Axis, AxisVec, AxisX, AxisY};
+use crate::plane::axis::{Axis, AxisVec, AxisX, AxisY};
+use crate::view::tilemap::{TileMap, TileMapView};
 
 impl<T> TileMap for ndarray::Array2<T> {
     type El = T;

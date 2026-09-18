@@ -393,10 +393,7 @@ name = "tilebound"
 version = "0.1.0"
 dependencies = [
  "marker_value",
- "tilebound_plane",
- "tilebound_schema",
- "tilebound_topology",
- "tilebound_view",
+ "num-traits",
 ]
 
 [[package]]
@@ -407,40 +404,6 @@ dependencies = [
  "macroquad",
  "marker_value",
  "tilebound",
-]
-
-[[package]]
-name = "tilebound_plane"
-version = "0.1.0"
-dependencies = [
- "marker_value",
- "num-traits",
-]
-
-[[package]]
-name = "tilebound_schema"
-version = "0.1.0"
-dependencies = [
- "marker_value",
- "tilebound_plane",
- "tilebound_topology",
- "tilebound_view",
- "zerocopy",
-]
-
-[[package]]
-name = "tilebound_topology"
-version = "0.1.0"
-dependencies = [
- "tilebound_plane",
-]
-
-[[package]]
-name = "tilebound_view"
-version = "0.1.0"
-dependencies = [
- "marker_value",
- "tilebound_plane",
 ]
 
 [[package]]
@@ -487,26 +450,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
-]
-
-[[package]]
-name = "zerocopy"
-version = "0.8.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5a105cd7b140f6eeec8acff2ea38135d3cab283ada58540f629fe51e46696eb"
-dependencies = [
- "zerocopy-derive",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.8.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fe976fb70c78cd64cccfe3a6fc142244e8a77b70959b30faf9d0ac37ee228eb"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

@@ -1,9 +1,9 @@
 use std::ops::{Range, RangeInclusive};
 
-use crate::vertex::{Vertex, VertexOffset};
-use tilebound_plane::axis::DynAxis;
-use tilebound_plane::endpoint::Endpoint;
-use tilebound_plane::scale::Scale;
+use crate::plane::axis::DynAxis;
+use crate::plane::endpoint::Endpoint;
+use crate::plane::scale::Scale;
+use crate::topology::vertex::{Vertex, VertexOffset};
 
 /// An [`Edge`] with no axis specified. This should only be used where an [`Axis`] can be inferred
 /// and cast by context (eg. in [`AxisVec`](tilebound_plane::axis::AxisVec)).
@@ -302,8 +302,8 @@ impl<A> Edge<A> {
 #[cfg(test)]
 mod tests {
 
-    use tilebound_plane::axis::AxisX;
-    use tilebound_plane::scale::ConSc;
+    use crate::plane::axis::AxisX;
+    use crate::plane::scale::ConSc;
 
     type Sc = ConSc<16>;
 

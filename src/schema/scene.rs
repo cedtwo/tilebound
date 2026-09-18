@@ -1,14 +1,14 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use tilebound_plane::axis::{Axis, AxisMask, AxisVec};
-use tilebound_plane::endpoint::Endpoint;
-use tilebound_plane::scale::Scale;
-use tilebound_topology::vertex::Vertex;
-use tilebound_view::index::{SliceIndex, SliceIndexError};
-use tilebound_view::tilemap::{TileMap, TileMapView};
+use crate::plane::axis::{Axis, AxisMask, AxisVec};
+use crate::plane::endpoint::Endpoint;
+use crate::plane::scale::Scale;
+use crate::topology::vertex::Vertex;
+use crate::view::index::{SliceIndex, SliceIndexError};
+use crate::view::tilemap::{TileMap, TileMapView};
 
-use crate::state::State;
+use crate::schema::state::State;
 
 /// # Scene
 ///

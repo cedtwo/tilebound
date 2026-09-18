@@ -3,7 +3,7 @@ use std::ops::{Add, Not, Sub};
 
 use num_traits::ConstOne;
 
-use crate::axis::AxisVec;
+use crate::plane::axis::AxisVec;
 
 /// # Endpoint
 ///
@@ -16,7 +16,7 @@ use crate::axis::AxisVec;
 /// # Example
 ///
 /// ```
-/// # use tilebound_plane::endpoint::Endpoint;
+/// # use tilebound::plane::endpoint::Endpoint;
 /// # use std::cmp::Ordering;
 /// #
 /// // For `Endpoint::Upper` `1` is greater than `0`.

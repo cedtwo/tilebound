@@ -1,11 +1,11 @@
 //! Tilemap view helper functions.
-use tilebound_plane::axis::Axis;
-use tilebound_plane::scale::Scale;
-use tilebound_schema::scene::Scene;
-use tilebound_schema::state::State;
-use tilebound_topology::vertex::Vertex;
-use tilebound_view::index::{SliceIndex, SliceIndexError};
-use tilebound_view::{inspect::TileMapInspect, tilemap::TileMapView};
+use crate::plane::axis::Axis;
+use crate::plane::scale::Scale;
+use crate::schema::scene::Scene;
+use crate::schema::state::State;
+use crate::topology::vertex::Vertex;
+use crate::view::index::{SliceIndex, SliceIndexError};
+use crate::view::{inspect::TileMapInspect, tilemap::TileMapView};
 
 /// Initialize an intersecting [`SliceIndex`] from a vertex, returning a [`TileMapInspect`] type or
 /// `None` if out of bounds.

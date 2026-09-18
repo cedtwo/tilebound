@@ -5,7 +5,7 @@ use std::ops::{Add, Mul, Sub};
 use marker_value::MarkerValue;
 use num_traits::{ConstZero, Num};
 
-use crate::axis::*;
+use crate::plane::axis::*;
 
 /// # AxisVec
 ///

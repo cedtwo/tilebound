@@ -1,15 +1,15 @@
 use std::ops::Range;
 
-use tilebound_plane::axis::{Axis, AxisMask, AxisVec, AxisX, AxisY};
-use tilebound_plane::endpoint::Endpoint;
-use tilebound_plane::scale::Scale;
-use tilebound_topology::edge::{Edge, RawEdge};
-use tilebound_topology::vertex::{RawVertex, Vertex};
-use tilebound_view::index::SliceIndex;
-use tilebound_view::inspect::TileMapInspect;
-use tilebound_view::tilemap::TileMapView;
+use crate::plane::axis::{Axis, AxisMask, AxisVec, AxisX, AxisY};
+use crate::plane::endpoint::Endpoint;
+use crate::plane::scale::Scale;
+use crate::topology::edge::{Edge, RawEdge};
+use crate::topology::vertex::{RawVertex, Vertex};
+use crate::view::index::SliceIndex;
+use crate::view::inspect::TileMapInspect;
+use crate::view::tilemap::TileMapView;
 
-use crate::scene::Scene;
+use crate::schema::scene::Scene;
 
 /// # State
 ///
@@ -504,7 +504,7 @@ impl<R> StatePayloadMut<R> for (&mut (f32, f32), &mut AxisMask, &mut R) {
 
 #[cfg(test)]
 mod tests {
-    use tilebound_plane::scale::ConSc;
+    use crate::plane::scale::ConSc;
 
     use super::*;
 

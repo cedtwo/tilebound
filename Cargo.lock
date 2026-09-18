@@ -99,9 +99,9 @@ dependencies = [
 
 [[package]]
 name = "mdarray"
-version = "0.7.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd6d8fe9d13f8b3d8242d143ac5e38608e8cfb418ce679305edd2382888e0357"
+checksum = "c1202b3bdc32fc845e4e005bb67b0682598f55f1fb0b8f4c71613dfe9a56f22b"
 
 [[package]]
 name = "ndarray"
@@ -225,49 +225,10 @@ version = "0.1.0"
 dependencies = [
  "bitvec",
  "marker_value",
- "subbyte_index",
- "tilebound_plane",
- "tilebound_schema",
- "tilebound_topology",
- "tilebound_view",
-]
-
-[[package]]
-name = "tilebound_plane"
-version = "0.1.0"
-dependencies = [
- "marker_value",
- "num-traits",
-]
-
-[[package]]
-name = "tilebound_schema"
-version = "0.1.0"
-dependencies = [
- "marker_value",
- "tilebound_plane",
- "tilebound_topology",
- "tilebound_view",
- "zerocopy",
-]
-
-[[package]]
-name = "tilebound_topology"
-version = "0.1.0"
-dependencies = [
- "tilebound_plane",
-]
-
-[[package]]
-name = "tilebound_view"
-version = "0.1.0"
-dependencies = [
- "bitvec",
- "marker_value",
  "mdarray",
  "ndarray",
+ "num-traits",
  "subbyte_index",
- "tilebound_plane",
 ]
 
 [[package]]
@@ -283,24 +244,4 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
-]
-
-[[package]]
-name = "zerocopy"
-version = "0.8.54"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7cbbc0a705a0fd05cc3676525980d2bf5a9bc4adac6d6475209a7887cf59d19"
-dependencies = [
- "zerocopy-derive",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.8.54"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2e817b7b52d0c7358d3246da9d69935ebb18116b2b102b4230dac079b4862f5"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]

@@ -3,8 +3,8 @@ use std::ops::*;
 
 use marker_value::MarkerValue;
 
-use crate::axis::{Axis, AxisX, AxisY};
-use crate::endpoint::Endpoint;
+use crate::plane::axis::{Axis, AxisX, AxisY};
+use crate::plane::endpoint::Endpoint;
 
 /// # AxisMask
 ///
@@ -113,7 +113,7 @@ impl AxisMask {
     ///
     /// # Example
     /// ```rust
-    /// # use tilebound_plane::axis::AxisMask;
+    /// # use tilebound::plane::axis::AxisMask;
     /// assert_eq!(AxisMask::LEFT.transpose(), AxisMask::TOP);
     /// assert_eq!(AxisMask::BOTTOM.transpose(), AxisMask::RIGHT);
     /// assert_eq!(AxisMask::TOP_LEFT.transpose(), AxisMask::TOP_LEFT);

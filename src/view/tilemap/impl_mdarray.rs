@@ -2,8 +2,8 @@ use std::ops::Range;
 
 use mdarray::*;
 
-use crate::tilemap::{TileMap, TileMapView};
-use tilebound_plane::axis::{Axis, AxisX, AxisY};
+use crate::plane::axis::{Axis, AxisX, AxisY};
+use crate::view::tilemap::{TileMap, TileMapView};
 
 impl<T, const X: usize, const Y: usize> TileMap
     for Array<T, (mdarray::Const<X>, mdarray::Const<Y>)>
@@ -49,14 +49,14 @@ mod tests {
 
     #[test]
     fn axis_size() {
-        let map: Array<u8, (Const<3>, Const<4>)> = Array::zeros();
+        let map: Array<u8, _> = Array::zeros((Const::<3>, Const::<4>));
         assert_eq!(map.axis_len::<AxisX>(), 3);
         assert_eq!(map.axis_len::<AxisY>(), 4);
     }
 
     #[test]
     fn is_in_bounds() {
-        let map: Array<u8, (Const<3>, Const<4>)> = Array::zeros();
+        let map: Array<u8, _> = Array::zeros((Const::<3>, Const::<4>));
         assert!(map.is_in_bounds::<AxisX>(0));
         assert!(map.is_in_bounds::<AxisX>(2));
         assert!(!map.is_in_bounds::<AxisX>(-1));
@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn range_is_in_bounds() {
-        let map: Array<u8, (Const<3>, Const<4>)> = Array::zeros();
+        let map: Array<u8, _> = Array::zeros((Const::<3>, Const::<4>));
         assert!(map.range_is_in_bounds::<AxisX>(0, -1..1));
         assert!(map.range_is_in_bounds::<AxisX>(2, 3..5));
         assert!(!map.range_is_in_bounds::<AxisX>(0, -2..-1));
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn view() {
-        let mut map: Array<u8, (Const<3>, Const<4>)> = Array::from_elem(0);
+        let mut map: Array<u8, _> = Array::from_elem((Const::<3>, Const::<4>), 0);
         map.row_mut(0).iter_mut().for_each(|el| *el = 1);
 
         assert_eq!(

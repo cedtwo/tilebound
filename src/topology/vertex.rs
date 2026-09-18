@@ -2,11 +2,11 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use tilebound_plane::axis::{Axis, DynAxis};
-use tilebound_plane::endpoint::Endpoint;
-use tilebound_plane::scale::Scale;
+use crate::plane::axis::{Axis, DynAxis};
+use crate::plane::endpoint::Endpoint;
+use crate::plane::scale::Scale;
 
-use crate::edge::Edge;
+use crate::topology::edge::Edge;
 
 /// A [`Vertex`] with no axis specified. This should only be used where an [`Axis`] can be inferred
 /// and cast by context (eg. in [`AxisVec`](tilebound_plane::axis::AxisVec)).
@@ -20,10 +20,8 @@ pub type RawVertex = Vertex<DynAxis>;
 /// vertices to be positioned at the same point, but occupy different tiles. See also [`VertexOffset`].
 ///
 /// ```rust
-/// # use tilebound_plane::endpoint::*;
-/// # use tilebound_plane::scale::*;
-/// # use tilebound_plane::axis::*;
-/// # use tilebound_topology::vertex::Vertex;
+/// # use tilebound::prelude::*;
+/// # use tilebound::topology::vertex::Vertex;
 /// type Sc = ConSc<16>;
 ///
 /// // Two vertices sharing the same tile bound.
@@ -80,10 +78,8 @@ impl<A> Vertex<A> {
     ///
     /// # Example
     /// ```rust
-    /// # use tilebound_plane::endpoint::*;
-    /// # use tilebound_plane::scale::*;
-    /// # use tilebound_plane::axis::*;
-    /// # use tilebound_topology::vertex::Vertex;
+    /// # use tilebound::prelude::*;
+    /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
     /// // A vertex on the upper bound of index `-1`.
@@ -112,10 +108,8 @@ impl<A> Vertex<A> {
     ///
     /// # Example
     /// ```rust
-    /// # use tilebound_plane::endpoint::*;
-    /// # use tilebound_plane::scale::*;
-    /// # use tilebound_plane::axis::*;
-    /// # use tilebound_topology::vertex::Vertex;
+    /// # use tilebound::prelude::*;
+    /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
     /// let vertex_on_bound = Vertex::<AxisX>::from_parts::<Sc>(0, 0.0, Endpoint::Upper);
@@ -144,10 +138,8 @@ impl<A> Vertex<A> {
     ///
     /// # Example
     /// ```rust
-    /// # use tilebound_plane::endpoint::*;
-    /// # use tilebound_plane::scale::*;
-    /// # use tilebound_plane::axis::*;
-    /// # use tilebound_topology::vertex::Vertex;
+    /// # use tilebound::prelude::*;
+    /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
     /// let bound_left = Vertex::<AxisX>::from_bound::<Sc>(0, Endpoint::Upper);
@@ -320,10 +312,8 @@ impl<A> Vertex<A> {
     ///
     /// # Example
     /// ```rust
-    /// # use tilebound_plane::endpoint::*;
-    /// # use tilebound_plane::scale::*;
-    /// # use tilebound_plane::axis::*;
-    /// # use tilebound_topology::vertex::Vertex;
+    /// # use tilebound::prelude::*;
+    /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
     /// let mut vertex_on_bound = Vertex::<AxisX>::from_parts::<Sc>(0, 0.0, Endpoint::Upper);
@@ -370,10 +360,8 @@ impl<A: Axis> Vertex<A> {
     /// return a transpose vertex with an offset **far** from the next bound.
     ///
     /// ```rust
-    /// # use tilebound_plane::endpoint::*;
-    /// # use tilebound_plane::scale::*;
-    /// # use tilebound_plane::axis::*;
-    /// # use tilebound_topology::vertex::Vertex;
+    /// # use tilebound::prelude::*;
+    /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
     /// let vert = Vertex::<AxisX>::from_pos::<Sc>(4.0, Endpoint::Lower);
@@ -515,8 +503,8 @@ impl From<f32> for VertexOffset {
 mod tests {
 
     use super::*;
-    use tilebound_plane::axis::AxisX;
-    use tilebound_plane::scale::ConSc;
+    use crate::plane::axis::AxisX;
+    use crate::plane::scale::ConSc;
 
     type Sc = ConSc<16>;
 

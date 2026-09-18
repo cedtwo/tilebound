@@ -1,10 +1,10 @@
 //! [`Delta`] initialization helper functions.
-use tilebound_plane::axis::Axis;
-use tilebound_plane::endpoint::Endpoint;
-use tilebound_plane::scale::Scale;
-use tilebound_schema::delta::Delta;
-use tilebound_schema::state::State;
-use tilebound_topology::vertex::Vertex;
+use crate::plane::axis::Axis;
+use crate::plane::endpoint::Endpoint;
+use crate::plane::scale::Scale;
+use crate::schema::delta::Delta;
+use crate::schema::state::State;
+use crate::topology::vertex::Vertex;
 
 /// Initialize a [`Delta`] from an `f32` value, returning `None` if the delta is invalid (`0.0`),
 /// or if the [`State`] is attached at the `delta` endpoint.

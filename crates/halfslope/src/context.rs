@@ -8,7 +8,6 @@ use tilebound::ops::*;
 use tilebound::plane::axis::AxisVec;
 use tilebound::prelude::*;
 use tilebound::schema::brk::Break;
-use tilebound::schema::delta::Delta;
 use tilebound::schema::state::DetachOp;
 use tilebound::topology::vertex::Vertex;
 

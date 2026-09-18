@@ -5,8 +5,8 @@ use bitvec::ptr::{BitRef, Const};
 use bitvec::{store::BitStore, vec::BitVec};
 use marker_value::MarkerValue;
 
-use crate::tilemap::{TileMap, TileMapView};
-use tilebound_plane::axis::{Axis, AxisVec, AxisX, AxisY};
+use crate::plane::axis::{Axis, AxisVec, AxisX, AxisY};
+use crate::view::tilemap::{TileMap, TileMapView};
 
 /// # BitMap
 ///
