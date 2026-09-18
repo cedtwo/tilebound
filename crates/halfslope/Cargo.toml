@@ -1,0 +1,22 @@
+[package]
+name = "tilebound_halfslope"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+marker_value = { version = "0.1.0" }
+tilebound = { path = "../../" }
+bitvec = "1.1.1"
+
+[dev-dependencies]
+macroquad = { version = "0.4" }
+
+[features]
+default = []
+arraymap = ["tilebound/arraymap"]
+
+[[example]]
+name = "minimal"
+path = "examples/minimal.rs"
+required-features = ["arraymap"]
+

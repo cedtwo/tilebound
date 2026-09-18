@@ -1,0 +1,15 @@
+[package]
+name = "tilebound_schema"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+marker_value = { workspace = true }
+tilebound_plane = { path = "../plane" }
+tilebound_view = { path = "../view" }
+tilebound_topology = { path = "../topology" }
+zerocopy = { version = "0.8.48", features = ["derive"] }
+
+[dev-dependencies]
+tilebound_view = { path = "../view", default-features = false, features = ["arraymap"] }

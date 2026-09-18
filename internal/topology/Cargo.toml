@@ -1,0 +1,8 @@
+[package]
+name = "tilebound_topology"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+tilebound_plane = { path = "../plane" }

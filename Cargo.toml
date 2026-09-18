@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+members = [
+    "internal/schema",
+    "internal/plane",
+    "internal/topology",
+    "internal/view",
+]
+exclude = [
+    "crates/solid",
+    "crates/halfslope",    
+]
+
+[workspace.package]
+authors = ["Christopher Edward Dawn"]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+bitvec = { version = "1.1.1" }
+subbyte_index = { version = "0.1.1" }
+marker_value = { version = "0.1.0" }
+
+[package]
+name = "tilebound"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "A framework for resolving tilemap collisions."
+readme = "README.md"
+repository = "https://github.com/cedtwo/tilebound.git"
+license = "MIT OR Apache-2.0"
+keywords = ["tilemap", "physics", "collision", "platformer", "topdown"]
+categories = ["game-development"]
+
+[dependencies]
+tilebound_schema = { path = "internal/schema" }
+tilebound_plane = { path = "internal/plane" }
+tilebound_topology = { path = "internal/topology" }
+tilebound_view = { path = "internal/view" }
+bitvec = { workspace = true, optional = true }
+marker_value = { workspace = true }
+subbyte_index = { workspace = true, optional = true }
+
+[features]
+default = []
+bitmap = ["dep:bitvec", "tilebound_view/bitmap"]
+packmap = ["dep:subbyte_index", "tilebound_view/packmap"]
+arraymap = ["tilebound_view/arraymap"]
+ndarray = ["tilebound_view/ndarray"]
+mdarray = ["tilebound_view/mdarray"]

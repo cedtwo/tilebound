@@ -1,0 +1,25 @@
+[package]
+name = "tilebound_solid"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bitvec = "1.1.1"
+tilebound = { path = "../.." }
+
+[dev-dependencies]
+macroquad = { version = "0.4" }
+
+[features]
+default = []
+arraymap = ["tilebound/arraymap"]
+bitmap = ["tilebound/bitmap"]
+
+[[test]]
+name = "sweep"
+required-features = ["arraymap"]
+
+[[example]]
+name = "minimal"
+path = "examples/minimal.rs"
+required-features = ["bitmap"]

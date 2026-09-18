@@ -1,0 +1,10 @@
+[package]
+name = "tilebound_plane"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+
+[dependencies]
+marker_value = { workspace = true }
+num-traits = "0.2.19"
+
