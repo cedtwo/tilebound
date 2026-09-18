@@ -1,11 +1,18 @@
 [package]
 name = "tilebound_solid"
+authors = ["Christopher Edward Dawn"]
 version = "0.1.0"
 edition = "2024"
+description = "A small boolean/bit tilemap collision libary"
+readme = "README.md"
+repository = "https://github.com/cedtwo/tilebound.git"
+license = "MIT OR Apache-2.0"
+keywords = ["tilemap", "physics", "collision", "platformer", "topdown"]
+categories = ["game-development"]
 
 [dependencies]
 bitvec = "1.1.1"
-tilebound = { path = "../.." }
+tilebound = { version = "0.1.0" }
 
 [dev-dependencies]
 macroquad = { version = "0.4" }
