@@ -83,7 +83,7 @@ impl<A: Axis> TileRange<A> {
         Self {
             axis: PhantomData,
             start_idx: AxisVec::new_mapped::<A>(index.inbound_range_start(), index.t_index as i32),
-            array: BitVec::with_capacity(dbg!(index.len_cropped())),
+            array: BitVec::with_capacity(index.len_cropped()),
             padding: index.padding(),
         }
     }
