@@ -62,7 +62,7 @@ pub enum VertexPattern {
 }
 
 impl VertexPattern {
-    /// Represent the `VertexTile` as a `VertexMask`.
+    /// Represent the `VertexPattern` as a `VertexMask`.
     #[inline]
     pub fn into_mask(self) -> VertexMask {
         VertexMask::from_bits(self as u8)

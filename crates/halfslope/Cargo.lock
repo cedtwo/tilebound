@@ -390,9 +390,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tilebound"
-version = "0.1.0"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "391bdd46a8564f61aa68f3f80d427660fdb5109ca56aeb759fd64803a40baf15"
+checksum = "38e2d28df4a78ecaa682b1e37d10891fe6bcb9c4b0b23d6c653837a004a981d6"
 dependencies = [
  "marker_value",
  "num-traits",
