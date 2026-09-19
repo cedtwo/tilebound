@@ -2,9 +2,9 @@ use std::ops::ControlFlow;
 
 /// # Break
 ///
-/// [`ControlFlow::Break`](std::ops::ControlFlow::Break) variant for displacement operations.
-/// Accepts a generic `T` for returning additional tile bound collision data. Consider implementing
-/// `From<T> for ControlFlow<Break<T>>` for convenience.
+/// [`ControlFlow::Break`] variant for displacement operations. Accepts a generic `T` for returning
+/// additional tile bound collision data. Consider implementing `From<T> for ControlFlow<Break<T>>`
+/// for convenience.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Break<T> {
     /// No attempted displacement due to a colliding edge, an intersected target, or a delta of `0.0`.
