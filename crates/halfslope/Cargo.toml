@@ -23,6 +23,11 @@ default = []
 arraymap = ["tilebound/arraymap"]
 
 [[example]]
+name = "minimal"
+path = "examples/minimal.rs"
+required-features = ["arraymap"]
+
+[[example]]
 name = "platformer"
 path = "examples/platformer.rs"
 required-features = ["arraymap"]

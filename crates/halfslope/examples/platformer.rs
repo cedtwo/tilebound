@@ -1,5 +1,4 @@
 use macroquad::prelude::*;
-
 use tilebound_halfslope::prelude::*;
 
 type Sc = ConSc<32>;
@@ -31,7 +30,7 @@ async fn main() {
     // Velocity
     let mut vel_x;
     let mut vel_y = 0.0;
-    // AttMask (collisions).
+    // AttMask (collisions) and trimask (bounding box intersecting triangle tile state).
     let mut attmask = AxisMask::NONE;
     let mut trimask = VertexMask::NONE.into();
 
@@ -133,25 +132,31 @@ async fn main() {
 }
 
 fn draw_map(map: &VecMap<VertexPattern>) {
+    let map_size = map.size();
+    // Draw white under the map.
+    draw_rectangle(
+        0.0,
+        0.0,
+        map_size.y() as f32 * Sc::SCALE,
+        map_size.x() as f32 * Sc::SCALE,
+        WHITE,
+    );
     map.vec.iter().enumerate().for_each(|(i, tile)| {
-        // The top-left position of a tile.
         let tl = Vec2::new(
-            (i as i32 % map.size().y() as i32 * Sc::SCALE_INT) as f32,
-            (i as i32 / map.size().y() as i32 * Sc::SCALE_INT) as f32,
+            (i as i32 % map_size.y() as i32 * Sc::SCALE_INT) as f32,
+            (i as i32 / map_size.y() as i32 * Sc::SCALE_INT) as f32,
         );
         let tr = || tl + Vec2::new(Sc::SCALE, 0.0);
         let bl = || tl + Vec2::new(0.0, Sc::SCALE);
         let br = || tl + Vec2::new(Sc::SCALE, Sc::SCALE);
-
-        // Draw white under each tile.
-        draw_rectangle(tl.x, tl.y, Sc::SCALE, Sc::SCALE, WHITE);
 
         match tile {
             VertexPattern::None => {}
             VertexPattern::Full => draw_rectangle(tl.x, tl.y, Sc::SCALE, Sc::SCALE, BROWN),
             VertexPattern::TopOneway => {
                 let tr = tr();
-                draw_line(tl.x, tl.y, tr.x, tr.y, 4.0, BROWN);
+                draw_line(tl.x, tl.y, tr.x, tr.y, 2.0, BROWN);
+                draw_triangle(tl, tr, tl + Vec2::new(Sc::SCALE / 2.0, 8.0), BROWN);
             }
             VertexPattern::LeftOneway => unreachable!(), // Not used in example.
             VertexPattern::BottomOneway => unreachable!(), // Not used in example.
