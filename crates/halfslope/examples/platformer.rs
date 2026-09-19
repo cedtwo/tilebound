@@ -39,9 +39,6 @@ async fn main() {
     const GRAV: f32 = 10.0;
     const JUMP: f32 = -Sc::SCALE * 9.0;
 
-    // Debug collisions.
-    let mut show_collisions = false;
-
     loop {
         if is_key_pressed(KeyCode::Enter) {
             match ctx.map_bounds().any() {
@@ -52,10 +49,6 @@ async fn main() {
                 }
                 false => *ctx.map_bounds_mut() = AxisMask::ALL,
             }
-        }
-
-        if is_key_pressed(KeyCode::C) {
-            show_collisions.toggle();
         }
 
         match (is_key_down(KeyCode::A), is_key_down(KeyCode::D)) {
