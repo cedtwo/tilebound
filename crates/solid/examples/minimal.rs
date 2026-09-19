@@ -100,8 +100,8 @@ fn draw_map(map: &BitMap) {
     // Draw the map.
     map.store.iter().enumerate().for_each(|(i, is_solid)| {
         draw_rectangle(
-            (i as i32 % map.size().x() as i32 * Sc::SCALE_INT) as f32,
-            (i as i32 / map.size().x() as i32 * Sc::SCALE_INT) as f32,
+            (i as i32 % map.size().y() as i32 * Sc::SCALE_INT) as f32,
+            (i as i32 / map.size().y() as i32 * Sc::SCALE_INT) as f32,
             Sc::SCALE,
             Sc::SCALE,
             if *is_solid { BLACK } else { WHITE },

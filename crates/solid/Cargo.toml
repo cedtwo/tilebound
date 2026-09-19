@@ -30,3 +30,8 @@ required-features = ["arraymap"]
 name = "minimal"
 path = "examples/minimal.rs"
 required-features = ["bitmap"]
+
+[[example]]
+name = "platformer"
+path = "examples/platformer.rs"
+required-features = ["bitmap"]
