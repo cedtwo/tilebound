@@ -15,7 +15,8 @@ use crate::schema::scene::Scene;
 ///
 /// Rectangle state variables. Stores the current and last position of the collider, and the
 /// attachment (collision) [`AxisMask`]. Provides operations for state assertion and mutation.
-/// For use in displacement operations, `State` can be created with
+/// `State` uses a [`StatePayload`] and [`StatePayloadMut`] implementing type for the input/output
+/// of variables.
 ///
 /// `State` accepts a generic resource `R`, accessible through the [`State::res`] and
 /// [`State::res_mut`] methods. This can be used to provide additional context to handlers, or
@@ -344,12 +345,36 @@ pub enum DetachOp {
 ///
 /// State instantiation payload ([`State::new`]). Implemented on `(position, size, attmask, resource)`
 /// tuples where each variables is represented as follows:
-/// - `position`: "`f32, f32`", "`(f32, f32)`" or "`AxisVec<f32>`",
-/// - `size`: "`f32, f32`", "`(f32, f32)`" or "`AxisVec<f32>`",
-/// - `attmask`: `AxisMask`,
-/// - `resource`: The generic type `R` variable in [`State<R>`], or omitted if `R` is `()`.
+/// - `position`: "`f32, f32,`", "`(f32, f32),`" or "`AxisVec<f32>,`",
+/// - `size`: "`f32, f32,`", "`(f32, f32),`" or "`AxisVec<f32>,`",
+/// - `attmask`: `AxisMask,`,
+/// - `resource`: "`R`" for the generic `R` in [`State<R>`], or omitted if [`State<()>`].
+/// Alternatively, implement [`StatePayload`] on your type.
+///
+/// ## Example
+/// ```
+/// # use tilebound::schema::state::{State};
+/// # use tilebound::plane::scale::{ConSc};
+/// # use tilebound::plane::axis::{AxisMask, AxisVec};
+/// # type Sc = ConSc<16>;
+/// #
+/// let (mut x, mut y) = (0.0, 0.0);
+/// let (x_len, y_len) = (16.0, 16.0);
+/// let mut mask = AxisMask::NONE;
+/// // Valid tuple payloads.
+/// let from_vars = (x, y, x_len, y_len, mask);
+/// # let _ = State::new::<Sc>(from_vars);
+/// let from_tuples = ((x, y), (x_len, y_len), mask);
+/// # let _ = State::new::<Sc>(from_tuples);
+/// let from_vecs = (AxisVec::new(x, y), AxisVec::new(x_len, y_len), mask);
+/// # let _ = State::new::<Sc>(from_vecs);
+/// // Where usng a bool resource (`State<bool>`).
+/// let from_tuples_with_res = ((x, y), (x_len, y_len), mask, true);
+/// # let _ = State::<bool>::new::<Sc>(from_tuples_with_res);
+/// ```
 pub trait StatePayload<R> {
-    /// Split the payload into a tuple containing the `f32` position, size and resource respectively.
+    /// Split the payload into a tuple containing the respective `f32` position, size and resource
+    /// (if any).
     fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, R);
 }
 
@@ -398,10 +423,47 @@ impl<R> StatePayload<R> for ((f32, f32), (f32, f32), AxisMask, R) {
 ///
 /// State mutation payload ([`State::apply`]). Implemented on `(position, attmask, resource)` tuples
 /// where each variables is represented as follows:
-/// - `position`: "`&mut f32, &mut f32`", "`(&mut f32, &mut f32)`" "`&mut (f32, f32)`",
-/// "`AxisVec<&mut f32>`" or "`&mut AxisVec<f32>`",
-/// - `attmask`: "`&mut AxisMask`",
-/// - `resource`: The generic type `R` variable in [`State<R>`], or omitted if `R` is `()`.
+/// - `position`: "`&mut f32, &mut f32,`", "`(&mut f32, &mut f32),`" "`&mut (f32, f32),`",
+/// "`AxisVec<&mut f32>,`" or "`&mut AxisVec<f32>,`",
+/// - `attmask`: "`&mut AxisMask,`",
+/// - `resource`: "`&mut R`" for the generic `R` in [`State<R>`], or omitted if [`State<()>`].
+/// Alternatively, implement [`StatePayloadMut`] on your type.
+///
+/// ## Example
+/// ```
+/// # use tilebound::schema::state::{State};
+/// # use tilebound::plane::scale::{ConSc};
+/// # use tilebound::plane::axis::{AxisMask, AxisVec};
+/// # type Sc = ConSc<16>;
+/// # let state = State::new::<Sc>((0.0, 0.0, 16.0, 16.0, AxisMask::NONE));
+/// # let state_with_bool = State::new::<Sc>((0.0, 0.0, 16.0, 16.0, AxisMask::NONE, true));
+/// #
+/// let mut mask = AxisMask::NONE;
+///
+/// // Mutate individual fields.
+/// let (mut x, mut y) = (0.0, 0.0);
+///
+/// let from_vars = (&mut x, &mut y, &mut mask);
+/// # state.apply::<Sc>(from_vars);
+/// let from_tuples = ((&mut x, &mut y), &mut mask);
+/// # state.apply::<Sc>(from_tuples);
+/// let from_vecs = (AxisVec::new(&mut x, &mut y), &mut mask);
+/// # state.apply::<Sc>(from_vecs);
+///
+/// // Mutate struct/tuple fields.
+/// let mut pos_tuple  = (0.0, 0.0);
+/// let mut pos_vec = AxisVec::new(0.0, 0.0);
+///
+/// let from_mut_tuples = (&mut pos_tuple, &mut mask);
+/// # state.apply::<Sc>(from_mut_tuples);
+/// let from_mut_vecs = (&mut pos_vec, &mut mask);
+/// # state.apply::<Sc>(from_mut_vecs);
+///
+/// // Append the resource to the end (in this case, the generic `bool` in `State<bool>`).
+/// let mut flag = false;
+/// let from_tuples_with_res = ((&mut x, &mut y), &mut mask, &mut flag);
+/// # state_with_bool.apply::<Sc>(from_tuples_with_res);
+/// ```
 pub trait StatePayloadMut<R> {
     /// Apply the changes in [`State`] to the tuple variables. Consumes `state`.
     fn apply<Sc: Scale>(&mut self, state: State<R>);
@@ -509,6 +571,55 @@ mod tests {
     use super::*;
 
     type Sc = ConSc<16>;
+
+    #[test]
+    fn apply_state_to_vars() {
+        let state: State<()> = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL))
+            .with_last_pos::<Sc>((-10.0, 10.0));
+        let state_with_res = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL, true));
+        let mut x = std::array::repeat::<f32, 6>(0.0);
+        let mut y = std::array::repeat::<f32, 6>(0.0);
+        let mut mask = std::array::repeat::<AxisMask, 6>(AxisMask::NONE);
+        let mut res = std::array::repeat::<bool, 3>(false);
+
+        // Without resources:
+        (&mut x[0], &mut y[0], &mut mask[0]).apply::<Sc>(state);
+        ((&mut x[1], &mut y[1]), &mut mask[1]).apply::<Sc>(state);
+        (AxisVec::new(&mut x[2], &mut y[2]), &mut mask[2]).apply::<Sc>(state);
+        // With resources:
+        (&mut x[3], &mut y[3], &mut mask[3], &mut res[0]).apply::<Sc>(state_with_res);
+        ((&mut x[4], &mut y[4]), &mut mask[4], &mut res[1]).apply::<Sc>(state_with_res);
+        #[rustfmt::skip]
+        (AxisVec::new(&mut x[5], &mut y[5]), &mut mask[5], &mut res[2]).apply::<Sc>(state_with_res);
+
+        assert!(x.iter().all(|x| *x == 1.0));
+        assert!(y.iter().all(|x| *x == 2.0));
+        assert!(mask.iter().all(|mask| mask.all()));
+        assert!(res.iter().all(|b| *b));
+    }
+
+    #[test]
+    fn apply_state_to_wrappers() {
+        let state: State<()> = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL))
+            .with_last_pos::<Sc>((-10.0, 10.0));
+        let state_with_res = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL, true));
+        let mut pos_tuple = std::array::repeat::<(f32, f32), 2>((0.0, 0.0));
+        let mut pos_vec = std::array::repeat::<AxisVec<f32>, 2>(AxisVec::new(0.0, 0.0));
+        let mut mask = std::array::repeat::<AxisMask, 4>(AxisMask::NONE);
+        let mut res = std::array::repeat::<bool, 2>(false);
+
+        // Without resources:
+        (&mut pos_tuple[0], &mut mask[0]).apply::<Sc>(state);
+        (&mut pos_vec[0], &mut mask[1]).apply::<Sc>(state);
+        // With resources:
+        (&mut pos_tuple[1], &mut mask[2], &mut res[0]).apply::<Sc>(state_with_res);
+        (&mut pos_vec[1], &mut mask[3], &mut res[1]).apply::<Sc>(state_with_res);
+
+        assert!(pos_tuple.iter().all(|pos| *pos == (1.0, 2.0)));
+        assert!(pos_vec.iter().all(|pos| *pos == AxisVec::new(1.0, 2.0)));
+        assert!(mask.iter().all(|mask| mask.all()));
+        assert!(res.iter().all(|b| *b));
+    }
 
     #[test]
     fn with_last_position() {

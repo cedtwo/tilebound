@@ -6,8 +6,7 @@
 //!
 //! `tilebound` is a library of types, representations and operations for handling and resolving
 //! bounding-box displacement and collision on a 2d array. `tilebound` includes:
-//! - Generic axis type enforcement and variable access and mutation (See [`Axis`](crate::prelude::Axis)
-//! and [`AxisVec`](crate::prelude::AxisVec)),
+//! - Generic axis type enforcement and variable access and mutation,
 //! - Delta endpoint spacing and orientation (See [`Delta`](crate::schema::delta::Delta) and
 //! [`Endpoint`](crate::prelude::Endpoint)),
 //! - Exact tile bound alignment with no [`f32::EPSILON`], [`f32::next_down`]/[`f32::next_up`] or
@@ -17,6 +16,32 @@
 //! [`TileMapView`],
 //! - Various helper methods and operations for initializing a delta, sweeping over a delta, checking tiles on-demand
 //! and updating stale collisions (See [`crate::ops`]).
+//!
+//! ## Core types and usage
+//!
+//! ### Axis and Axis markers
+//!
+//! All operations within `tilebound` use a generic [`Axis`](crate::prelude::Axis) marker to specify
+//! axis. This marker is used to resolve [`AxisVec`](crate::prelude::AxisVec) indexed variables or
+//! [`TileMapView`](crate::prelude::TileMapView) associated types (eg. a row or column view).
+//! Ideally operations will be optimized for better performance at the expense of monomorphization.
+//!
+//! [`Axis`] is further often also used for type enforcement using [`PhantomData`](std::marker::PhantomData).
+//!
+//! ### Scene and Scale
+//!
+//! [`Scene`](crate::prelude::Scene) declares a [`TileMap`](crate::prelude::TileMap) implementing type,
+//! a `const` [`Scale`](crate::prelude::Scale) (tile dimensions) and the solid map boundaries.
+//!
+//! ### State and State variables
+//!
+//!
+//!
+//!  The large majority of operations resolve to retrieving and mutating
+//!
+//! (See [`Axis`](crate::prelude::Axis)
+//! and [`AxisVec`](crate::prelude::AxisVec)),
+//!
 //!
 //! ## Implementations
 //!
