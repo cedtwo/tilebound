@@ -52,7 +52,7 @@ impl<Store: BitStore> TileMapView<AxisX> for BitMap<Store> {
         Self: 'a;
 
     fn view(&self, idx: usize, range: Range<usize>) -> Self::View<'_> {
-        let start = idx * self.size.x() + range.start;
+        let start = idx * self.size.y() + range.start;
         let end = start + range.len();
         &self.store[start..end]
     }
@@ -69,7 +69,7 @@ impl<Store: BitStore> TileMapView<AxisY> for BitMap<Store> {
             slice: self.store.as_bitslice(),
             col_idx: idx,
             range,
-            x_len: self.size.x(),
+            x_len: self.size.y(),
         }
     }
 }
@@ -84,7 +84,7 @@ pub struct BitCol<'a, Store: BitStore> {
     col_idx: usize,
     /// The row element range.
     range: Range<usize>,
-    /// The number of elements on the *x* axis.
+    /// The number of elements on a slice of the *x* axis.
     x_len: usize,
 }
 
@@ -129,8 +129,7 @@ mod tests {
             0, 1, 0, 0, 0,
             0, 0, 1, 0, 0,
             0, 0, 0, 1, 0,
-            0, 0, 0, 0, 1,
-        ].into(), (5, 5));
+        ].into(), (4, 5));
 
         assert_eq!(
             TileMapView::<AxisX>::view(&map, 0, 0..5),
@@ -148,10 +147,6 @@ mod tests {
             TileMapView::<AxisX>::view(&map, 3, 0..5),
             bitarray!([0, 0, 0, 1, 0]).as_bitslice()
         );
-        assert_eq!(
-            TileMapView::<AxisX>::view(&map, 4, 0..5),
-            bitarray!([0, 0, 0, 0, 1]).as_bitslice()
-        );
     }
 
     #[test]
@@ -162,28 +157,27 @@ mod tests {
             1, 1, 0, 0, 0,
             0, 1, 1, 0, 0,
             0, 0, 1, 1, 0,
-            0, 0, 0, 1, 1,
-        ].into(), (5, 5));
+        ].into(), (4, 5));
 
         assert_eq!(
             TileMapView::<AxisY>::view(&map, 0, 0..5).collect::<BitVec>(),
-            bitarray!([1, 1, 0, 0, 0]).as_bitslice()
+            bitarray!([1, 1, 0, 0]).as_bitslice()
         );
         assert_eq!(
             TileMapView::<AxisY>::view(&map, 1, 0..5).collect::<BitVec>(),
-            bitarray!([0, 1, 1, 0, 0]).as_bitslice()
+            bitarray!([0, 1, 1, 0]).as_bitslice()
         );
         assert_eq!(
             TileMapView::<AxisY>::view(&map, 2, 0..5).collect::<BitVec>(),
-            bitarray!([0, 0, 1, 1, 0]).as_bitslice()
+            bitarray!([0, 0, 1, 1]).as_bitslice()
         );
         assert_eq!(
             TileMapView::<AxisY>::view(&map, 3, 0..5).collect::<BitVec>(),
-            bitarray!([0, 0, 0, 1, 1]).as_bitslice()
+            bitarray!([0, 0, 0, 1]).as_bitslice()
         );
         assert_eq!(
             TileMapView::<AxisY>::view(&map, 4, 0..5).collect::<BitVec>(),
-            bitarray!([0, 0, 0, 0, 1]).as_bitslice()
+            bitarray!([0, 0, 0, 0]).as_bitslice()
         );
     }
 }
