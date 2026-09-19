@@ -41,7 +41,7 @@ async fn main() {
         if is_key_pressed(KeyCode::Enter) {
             match ctx.scene().map_bounds.any() {
                 true => {
-                    // Force recheck collisions when turning off map-bound (rechecks on entering a new tile).
+                    // Force recheck collisions.
                     attmask = AxisMask::NONE.into();
                     *ctx.map_bounds_mut() = AxisMask::NONE;
                 }
@@ -65,9 +65,7 @@ async fn main() {
         ctx.sweep_by::<AxisX>(&mut state, vel_x);
         ctx.sweep_by::<AxisY>(&mut state, vel_y);
 
-        x = state.pos::<AxisX, Sc>();
-        y = state.pos::<AxisY, Sc>();
-        attmask = state.attmask();
+        state.apply::<Sc>(((&mut x, &mut y), &mut attmask));
 
         match ctx.map_bounds().any() {
             true => clear_background(GRAY),
