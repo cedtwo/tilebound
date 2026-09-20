@@ -2,8 +2,8 @@
 use crate::plane::axis::Axis;
 use crate::plane::endpoint::Endpoint;
 use crate::plane::scale::Scale;
-use crate::schema::delta::Delta;
 use crate::schema::state::State;
+use crate::topology::delta::Delta;
 use crate::topology::vertex::Vertex;
 
 /// Initialize a [`Delta`] from an `f32` value, returning `None` if the delta is invalid (`0.0`),

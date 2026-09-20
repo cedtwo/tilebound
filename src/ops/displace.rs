@@ -5,9 +5,9 @@ use crate::plane::axis::Axis;
 use crate::plane::endpoint::EndpointRange;
 use crate::plane::scale::Scale;
 use crate::schema::brk::Break;
-use crate::schema::delta::Delta;
 use crate::schema::scene::Scene;
 use crate::schema::state::State;
+use crate::topology::delta::Delta;
 use crate::topology::vertex::Vertex;
 use crate::view::tilemap::TileMap;
 
