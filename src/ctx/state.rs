@@ -9,7 +9,7 @@ use crate::view::index::SliceIndex;
 use crate::view::inspect::TileMapInspect;
 use crate::view::tilemap::TileMapView;
 
-use crate::schema::scene::Scene;
+use crate::ctx::scene::Scene;
 
 /// # State
 ///
@@ -351,7 +351,7 @@ pub enum DetachOp {
 ///
 /// ## Example
 /// ```
-/// # use tilebound::schema::state::{State};
+/// # use tilebound::ctx::state::{State};
 /// # use tilebound::plane::scale::{ConSc};
 /// # use tilebound::plane::axis::{AxisMask, AxisVec};
 /// # type Sc = ConSc<16>;
@@ -429,7 +429,7 @@ impl<R> StatePayload<R> for ((f32, f32), (f32, f32), AxisMask, R) {
 ///
 /// ## Example
 /// ```
-/// # use tilebound::schema::state::{State};
+/// # use tilebound::ctx::state::{State};
 /// # use tilebound::plane::scale::{ConSc};
 /// # use tilebound::plane::axis::{AxisMask, AxisVec};
 /// # type Sc = ConSc<16>;

@@ -1,10 +1,10 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
+use crate::ctx::state::State;
 use crate::plane::axis::{Axis, AxisMask, AxisVec};
 use crate::plane::endpoint::Endpoint;
 use crate::plane::scale::Scale;
-use crate::schema::state::State;
 use crate::topology::vertex::Vertex;
 use crate::view::index::{SliceIndex, SliceIndexError};
 use crate::view::tilemap::{TileMap, TileMapView};

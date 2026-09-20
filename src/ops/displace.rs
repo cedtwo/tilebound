@@ -1,12 +1,12 @@
 //! Displacement helper functions.
 use std::ops::ControlFlow;
 
+use crate::ctx::brk::Break;
+use crate::ctx::scene::Scene;
+use crate::ctx::state::State;
 use crate::plane::axis::Axis;
 use crate::plane::endpoint::EndpointRange;
 use crate::plane::scale::Scale;
-use crate::schema::brk::Break;
-use crate::schema::scene::Scene;
-use crate::schema::state::State;
 use crate::topology::delta::Delta;
 use crate::topology::vertex::Vertex;
 use crate::view::tilemap::TileMap;

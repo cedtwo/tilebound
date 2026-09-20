@@ -37,8 +37,8 @@
 //! [`Scene`](prelude::Scene) | Wraps a tilemap type with some minimal `tilebound` configuration.
 //! [`State`](prelude::State) | An intermediate used for bounding box displacement operations.
 //! [`Vertex`](topology::vertex::Vertex)/[`Edge`](topology::edge::Edge)/[`Endpoint`](prelude::Endpoint) | Bounding box position alignment, orientation, displacement and indices.
-//! [`Delta`](schema::delta::Delta) | Steps over a delta from an *origin* to a *target* producing vertex positions.
-//! [`Break`](schema::brk::Break) | A simple enum return type for displacement operations and control-flow, possibly including collision data.
+//! [`Delta`](ctx::delta::Delta) | Steps over a delta from an *origin* to a *target* producing vertex positions.
+//! [`Break`](ctx::brk::Break) | A simple enum return type for displacement operations and control-flow, possibly including collision data.
 //!
 //! ### Helper operations
 //!
@@ -53,7 +53,7 @@
 //! tilemap each frame to avoid the complexity of tracking state. The above workflow is what was
 //! used for the included [implementations](#implementations) and the workflow is described below.
 //!
-//! For such a workflow an implementation would create a [`Delta`](schema::delta::Delta), loop over
+//! For such a workflow an implementation would create a [`Delta`](topology::delta::Delta), loop over
 //! the furthest (*outer*) vertices for each tile index intersected by the delta, check for a
 //! collision within that tile and either displace, or end displacement at the furthest point prior
 //! to a collision. This process can be further optimized by skipping a tilemap check if already
@@ -85,8 +85,8 @@
 //! `packmap` | Exports [`packmap`](prelude::PackMap), an *experimental* bitfield backed tilemap where each tile represents `2` or `4` bits.
 //! `ndarray` | Implements [`TileMap`](prelude::TileMap) and [`TileMapView`](prelude::TileMapView) for `ndarray`s `Array2` type.
 //! `mdarray` | Implements [`TileMap`](prelude::TileMap) and [`TileMapView`](prelude::TileMapView) for `mdarray`s two-dimensional `Array` type.
+pub mod ctx;
 pub mod plane;
-pub mod schema;
 pub mod topology;
 pub mod view;
 
@@ -98,9 +98,9 @@ pub mod prelude {
     pub use crate::plane::endpoint::Endpoint;
     pub use crate::plane::scale::{ConSc, Scale};
 
-    pub use crate::schema::brk::Break;
-    pub use crate::schema::scene::Scene;
-    pub use crate::schema::state::State;
+    pub use crate::ctx::brk::Break;
+    pub use crate::ctx::scene::Scene;
+    pub use crate::ctx::state::State;
 
     pub use crate::view::tilemap::{TileMap, TileMapView};
 

@@ -1,8 +1,8 @@
 //! Tilemap view helper functions.
+use crate::ctx::scene::Scene;
+use crate::ctx::state::State;
 use crate::plane::axis::Axis;
 use crate::plane::scale::Scale;
-use crate::schema::scene::Scene;
-use crate::schema::state::State;
 use crate::topology::vertex::Vertex;
 use crate::view::index::{SliceIndex, SliceIndexError};
 use crate::view::{inspect::TileMapInspect, tilemap::TileMapView};

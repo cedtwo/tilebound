@@ -1,8 +1,8 @@
 //! [`Delta`] initialization helper functions.
+use crate::ctx::state::State;
 use crate::plane::axis::Axis;
 use crate::plane::endpoint::Endpoint;
 use crate::plane::scale::Scale;
-use crate::schema::state::State;
 use crate::topology::delta::Delta;
 use crate::topology::vertex::Vertex;
 
