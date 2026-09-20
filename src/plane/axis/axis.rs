@@ -4,15 +4,14 @@ use marker_value::MarkerValue;
 
 /// # Axis
 ///
-/// Axis markers and indices.
+/// Axis identifier, index types and type check enforcement.
 ///
-/// `Axis` is is a `const` marker type used for variable access type check enforcement.
+/// `Axis` is used to resolve [`AxisVec`](super::AxisVec) indexed variables or
+/// [`TileMapView`](crate::view::tilemap::TileMapView) associated types (eg. a row or column view).
+/// Ideally operations will be optimized for better performance at the expense of monomorphization.
 ///
-/// `Axis` is used as a generic argument for types and operation that differ by axis (usually in
-/// relation to mapping or retrieving variables). [`Axis`] types can refer to the transpose of the
-/// given axis with [`Axis`], and an index for array access or identification using
-/// [`MarkerValue::VALUE`]. It offers the potential for better optimization at the cost of an
-/// increased binary size. See also [`DynAxis`] and [`Axis::into_dyn`].
+/// `Axis` types refer to their transpose with [`Axis::T`] and offer a dynamic runtime variant
+/// [`DynAxis`] for where variables of different axes need to resolve to the same type.
 pub trait Axis: MarkerValue<usize> + Debug + Clone + Copy + PartialEq + Eq {
     /// The transpose axis type.
     type T: Axis<T = Self>;

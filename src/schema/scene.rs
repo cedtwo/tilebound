@@ -4,18 +4,18 @@ use std::ops::Range;
 use crate::plane::axis::{Axis, AxisMask, AxisVec};
 use crate::plane::endpoint::Endpoint;
 use crate::plane::scale::Scale;
+use crate::schema::state::State;
 use crate::topology::vertex::Vertex;
 use crate::view::index::{SliceIndex, SliceIndexError};
 use crate::view::tilemap::{TileMap, TileMapView};
 
-use crate::schema::state::State;
-
 /// # Scene
 ///
-/// [`TileMap`] access and configuration. `Scene` is used to define a constant integer [`Scale`]
-/// (`Sc`) for both axes of a tile, a [`TileMap`] (and likely [`TileMapView`]) implementing type
-/// (`Map`), and the solid map bounds represented as an [`AxisMask`]. Fields variables can be freely
-/// accessed, mutated and replaced.
+/// [`TileMap`] access and configuration.
+///
+/// `Scene` is used to define a constant integer [`Scale`] (`Sc`) for both axes of a tile, a
+/// [`TileMap`] (and likely [`TileMapView`]) implementing type (`Map`), and the solid map bounds
+/// represented as an [`AxisMask`]. Fields variables can be freely accessed, mutated and replaced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Scene<Sc, Map> {
     /// The (integer) size of a tile on either dimension.

@@ -7,11 +7,11 @@ use crate::plane::axis::AxisVec;
 
 /// # Endpoint
 ///
-/// Differentiates between the lower and upper endpoints on an axis.
+/// Differentiates direction on an axis.
 ///
-/// `Endpoint` is primarily used for operation orientation (especially in relation to a delta). Many
-/// operations (eg. [`Endpoint::gt`], [`Endpoint::lt`]) follow numerical ordering for the [`Endpoint::Upper`],
-/// variant, but are reversed for [`Endpoint::Lower`] orientation.
+/// `Endpoint` describes a direction on an axis, usually for operation orientation. A large number
+/// of `Endpoint` methods follow numerical ordering for the [`Endpoint::Upper`], variant, and are
+/// reversed for [`Endpoint::Lower`] orientation.
 ///
 /// # Example
 ///
@@ -32,10 +32,10 @@ use crate::plane::axis::AxisVec;
 /// [`EndpointRange`](super::EndpointRange)).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Endpoint {
-    /// A lower of two directions, sides, bounds or endpoints.
+    /// A lower or negative of two directions, sides, bounds or endpoints.
     #[default]
     Lower = 0,
-    /// An upper of two directions, sides, bounds or endpoints.
+    /// An upper or positive of two directions, sides, bounds or endpoints.
     Upper = 1,
 }
 

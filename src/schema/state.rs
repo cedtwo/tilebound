@@ -13,14 +13,12 @@ use crate::schema::scene::Scene;
 
 /// # State
 ///
-/// Rectangle state variables. Stores the current and last position of the collider, and the
-/// attachment (collision) [`AxisMask`]. Provides operations for state assertion and mutation.
-/// `State` uses a [`StatePayload`] and [`StatePayloadMut`] implementing type for the input/output
-/// of variables.
+/// Bounding box state variables for use during displacement operations.
 ///
-/// `State` accepts a generic resource `R`, accessible through the [`State::res`] and
-/// [`State::res_mut`] methods. This can be used to provide additional context to handlers, or
-/// return additional data to the caller.
+/// `State` stores bounding box variables for mutation and assertion during operations. The minimal
+/// variables needed are a bounding box top-left position, size and attachment [`AxisMask`]
+/// (referred to as *attmask*). Accepts a generic resource `R`, accessible through the [`State::res`]
+/// and [`State::res_mut`] methods to (optionally) provide additional bounding box data.
 ///
 /// Note that assertions on recent changes (eg. [`State::index_changed`]) are relative to the last call to
 /// [`State::update`]. In addition to assertions, `State` is primarily used for updating a position

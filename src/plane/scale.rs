@@ -6,7 +6,12 @@ use marker_value::MarkerValue;
 ///
 /// An integer representation of a tile size (for both axes).
 ///
-/// A single [`Scale`] variable should be a persistant across **all** operations and should
+/// `Scale` defines the length of a (square) tile on each dimension. This has an influence on all
+/// declared sizes and deltas in relation to the given tile size. For example, a bounding box with a
+/// size of `8.0` on one axis occupies `8` tiles where the scale is `1`, but half a tile where the
+/// scale is `16`.
+///
+/// A single `Scale` variable should be a presisted across **all** operations and should
 /// preferably a power of two. See [`ConSc`].
 pub trait Scale: MarkerValue<u32> {
     /// Get the scale as an `f32` float.

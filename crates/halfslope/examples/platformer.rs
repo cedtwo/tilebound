@@ -21,10 +21,10 @@ async fn main() {
 
     let mut ctx: Context<Sc, _> = Context::new(&map, AxisMask::ALL);
 
-    // Collider position.
+    // Position.
     let mut x = 0.0;
     let mut y = 0.0;
-    // Collider size.
+    // Size.
     let len_x = 18.0;
     let len_y = 25.0;
     // Velocity
@@ -96,7 +96,7 @@ async fn main() {
 
         draw_map(&map);
 
-        // Draw the collider.
+        // Draw the rectangle (bounding box).
         draw_rectangle(
             x,
             y,
