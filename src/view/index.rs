@@ -1,10 +1,9 @@
 use std::error::Error;
 use std::fmt::Display;
-use std::marker::PhantomData;
 use std::ops::{Neg, Range};
 
 use crate::plane::axis::{Axis, AxisVec};
-use crate::plane::endpoint::{Endpoint, EndpointPair, EndpointRange};
+use crate::plane::endpoint::{Endpoint, EndpointBound, EndpointPair, EndpointRange};
 
 /// # SliceIndex
 ///
@@ -16,8 +15,6 @@ use crate::plane::endpoint::{Endpoint, EndpointPair, EndpointRange};
 /// of out-of-bound elements in the range (referred to as *padding* in methods).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SliceIndex<A: Axis> {
-    /// The tile range axis.
-    pub _axis: PhantomData<A>,
     /// The tile index on the transpose axis.
     pub t_index: usize,
     /// The given slice range on axis `A`.
@@ -25,7 +22,7 @@ pub struct SliceIndex<A: Axis> {
     /// The upper exclusive index bound on axis `A`.
     pub range_lmt: i32,
     /// The tile bound [`Endpoint`] on the tranpose axis.
-    pub end: Endpoint,
+    pub end: Endpoint<A::T>,
 }
 
 impl<A: Axis> SliceIndex<A> {
@@ -34,7 +31,7 @@ impl<A: Axis> SliceIndex<A> {
     pub fn try_new(
         t_index: i32,
         range: Range<i32>,
-        end: Endpoint,
+        t_end: Endpoint<A::T>,
         map_size: AxisVec<usize>,
     ) -> Result<Self, SliceIndexError<A>> {
         let limit = map_size.get::<A::T>() as i32;
@@ -42,12 +39,11 @@ impl<A: Axis> SliceIndex<A> {
             .ok()
             .filter(|index| *index < map_size.get::<A>() && range.intersects(&(0..limit)))
         else {
-            return Err(SliceIndexError::new(t_index, range, end));
+            return Err(SliceIndexError::new(t_index, range, t_end));
         };
 
         Ok(SliceIndex {
-            _axis: PhantomData,
-            end,
+            end: t_end,
             t_index: index_inb,
             range,
             range_lmt: limit,
@@ -56,11 +52,15 @@ impl<A: Axis> SliceIndex<A> {
 
     /// Create a new `SliceIndex` assuming the given `index` and `t_range` is at least partially
     /// in-bounds.
-    pub fn new_unchecked(t_index: i32, range: Range<i32>, range_lmt: i32, end: Endpoint) -> Self {
+    pub fn new_unchecked(
+        t_index: i32,
+        range: Range<i32>,
+        range_lmt: i32,
+        t_end: Endpoint<A::T>,
+    ) -> Self {
         debug_assert!(t_index >= 0);
         SliceIndex {
-            _axis: PhantomData,
-            end,
+            end: t_end,
             t_index: t_index as usize,
             range,
             range_lmt,
@@ -68,7 +68,7 @@ impl<A: Axis> SliceIndex<A> {
     }
 
     /// Get the padding (number of out of bound elements) for each endpoint.
-    pub fn padding(&self) -> EndpointPair<i32> {
+    pub fn padding(&self) -> EndpointPair<A, i32> {
         let neg_pad = if self.range.start.is_negative() {
             self.range.start.neg()
         } else {
@@ -83,9 +83,11 @@ impl<A: Axis> SliceIndex<A> {
 
     /// Get the slice starting index.
     pub fn start_index(&self) -> AxisVec<i32> {
-        match self.end {
-            Endpoint::Lower => AxisVec::new_mapped::<A>(self.t_index as i32, *self.range.lower()),
-            Endpoint::Upper => {
+        match *self.end {
+            EndpointBound::Lower => {
+                AxisVec::new_mapped::<A>(self.t_index as i32, *self.range.lower())
+            }
+            EndpointBound::Upper => {
                 AxisVec::new_mapped::<A>(self.t_index as i32 + 1, *self.range.lower())
             }
         }
@@ -132,15 +134,13 @@ impl<A: Axis> SliceIndex<A> {
 ///
 /// [`Error`] type for out-of-bound indices.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SliceIndexError<A> {
-    /// The tile range axis.
-    pub _axis: PhantomData<A>,
+pub struct SliceIndexError<A: Axis> {
     /// The transpose axis index.
     pub t_index: i32,
     /// The input range on axis `A`.
     pub range: Range<i32>,
     /// The tile bound [`Endpoint`].
-    pub end: Endpoint,
+    pub end: Endpoint<A::T>,
 }
 
 impl<A: Axis> Display for SliceIndexError<A> {
@@ -156,11 +156,10 @@ impl<A: Axis> Display for SliceIndexError<A> {
     }
 }
 
-impl<A> SliceIndexError<A> {
+impl<A: Axis> SliceIndexError<A> {
     /// Create a new `OutOfBoundsError` from an index, a transpose range and an endpoint.
-    pub fn new(t_index: i32, range: Range<i32>, end: Endpoint) -> Self {
+    pub fn new(t_index: i32, range: Range<i32>, end: Endpoint<A::T>) -> Self {
         Self {
-            _axis: PhantomData,
             end,
             t_index,
             range,
@@ -178,7 +177,7 @@ mod tests {
 
     #[test]
     fn try_new() {
-        let end = Endpoint::LOW;
+        let end = Endpoint::LOWER;
         let map_bounds = AxisVec::new(8, 8);
         let idx_0 = SliceIndex::<AxisX>::try_new(0, (1..2).into(), end, map_bounds);
         let idx_1 = SliceIndex::<AxisX>::try_new(-1, (1..2).into(), end, map_bounds);
@@ -203,7 +202,7 @@ mod tests {
     fn padding() {
         let map_bounds = AxisVec::new(3, 3);
         let idx =
-            SliceIndex::<AxisX>::try_new(0, (-2..5).into(), Endpoint::Lower, map_bounds).unwrap();
+            SliceIndex::<AxisX>::try_new(0, (-2..5).into(), Endpoint::TOP, map_bounds).unwrap();
 
         assert_eq!(idx.padding(), (2, 2).into());
     }
@@ -212,7 +211,7 @@ mod tests {
     fn range_cropped() {
         let map_bounds = AxisVec::new(3, 3);
         let idx =
-            SliceIndex::<AxisX>::try_new(0, (-2..5).into(), Endpoint::Lower, map_bounds).unwrap();
+            SliceIndex::<AxisX>::try_new(0, (-2..5).into(), Endpoint::TOP, map_bounds).unwrap();
 
         assert_eq!(idx.range_cropped(), 0..3);
     }
@@ -221,7 +220,7 @@ mod tests {
     fn len_cropped() {
         let map_bounds = AxisVec::new(3, 3);
         let idx =
-            SliceIndex::<AxisX>::try_new(0, (-2..5).into(), Endpoint::Lower, map_bounds).unwrap();
+            SliceIndex::<AxisX>::try_new(0, (-2..5).into(), Endpoint::TOP, map_bounds).unwrap();
 
         assert_eq!(idx.len_cropped(), 3);
     }

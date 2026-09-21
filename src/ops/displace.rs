@@ -24,7 +24,7 @@ pub fn skip_to_map<A: Axis, R, Sc: Scale, Map: TileMap>(
 ) -> bool {
     let end = tgt.endpoint();
     let vert_idx = state.index::<A, Sc>(end);
-    let bnd_idx = scene.map.bound_index::<A::T>(!end) as i32;
+    let bnd_idx = scene.map.bound_index::<A>(!end) as i32;
 
     if !state
         .index_range::<A::T, Sc>()
@@ -59,7 +59,7 @@ pub fn skip_from_map<A: Axis, R, Sc: Scale, Map: TileMap>(
 ) -> bool {
     let end = tgt.endpoint();
     let vert_idx = state.index::<A, Sc>(end);
-    let bnd_idx = scene.map.bound_index::<A::T>(end) as i32;
+    let bnd_idx = scene.map.bound_index::<A>(end) as i32;
 
     if end.gt(vert_idx, bnd_idx) {
         // Out-of-bounds displacing **away** from the map.
@@ -134,9 +134,9 @@ mod tests {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
 
-            let mut tgt = state.vertex::<AxisX, Sc>(Endpoint::Upper);
+            let mut tgt = state.vertex::<_, Sc>(Endpoint::RIGHT);
             tgt.translate::<Sc>(16.0);
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt, &mut state, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt, &mut state, &scene);
 
             assert!(!mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 0.0);
@@ -146,15 +146,15 @@ mod tests {
         fn inb_to_outb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let mut tgt_l = state.vertex::<AxisX, Sc>(Endpoint::Lower);
+            let mut tgt_l = state.vertex::<_, Sc>(Endpoint::LEFT);
             tgt_l.translate::<Sc>(-32.0);
-            let mut tgt_r = state.vertex::<AxisX, Sc>(Endpoint::Upper);
+            let mut tgt_r = state.vertex::<_, Sc>(Endpoint::RIGHT);
             tgt_r.translate::<Sc>(64.0);
 
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt_l, &mut state, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt_l, &mut state, &scene);
             assert!(!mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 0.0);
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt_r, &mut state, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt_r, &mut state, &scene);
             assert!(!mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 0.0);
         }
@@ -164,13 +164,13 @@ mod tests {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt_l = Vertex::from_pos::<Sc>(0.0, Endpoint::Lower);
-            let tgt_r = Vertex::from_pos::<Sc>(0.0, Endpoint::Upper);
+            let tgt_l = Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT);
+            let tgt_r = Vertex::from_pos::<Sc>(0.0, Endpoint::RIGHT);
 
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt_r, &mut state_l, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt_r, &mut state_l, &scene);
             assert!(mutated);
             assert_eq!(state_l.pos::<AxisX, Sc>(), -16.0);
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt_l, &mut state_r, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt_l, &mut state_r, &scene);
             assert!(mutated);
             assert_eq!(state_r.pos::<AxisX, Sc>(), 32.0);
         }
@@ -180,13 +180,13 @@ mod tests {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt_l = Vertex::from_pos::<Sc>(-64.0, Endpoint::Lower);
-            let tgt_r = Vertex::from_pos::<Sc>(96.0, Endpoint::Upper);
+            let tgt_l = Vertex::from_pos::<Sc>(-64.0, Endpoint::LEFT);
+            let tgt_r = Vertex::from_pos::<Sc>(96.0, Endpoint::RIGHT);
 
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt_l, &mut state_l, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt_l, &mut state_l, &scene);
             assert!(!mutated);
             assert_eq!(state_l.pos::<AxisX, Sc>(), -32.0);
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt_r, &mut state_r, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt_r, &mut state_r, &scene);
             assert!(!mutated);
             assert_eq!(state_r.pos::<AxisX, Sc>(), 48.0);
         }
@@ -195,9 +195,9 @@ mod tests {
         fn parallel_to_map() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state = State::new::<Sc>(((-16.0, -16.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt = Vertex::from_pos::<Sc>(48.0, Endpoint::Upper);
+            let tgt = Vertex::from_pos::<Sc>(48.0, Endpoint::RIGHT);
 
-            let mutated = skip_to_map::<AxisX, _, Sc, _>(tgt, &mut state, &scene);
+            let mutated = skip_to_map::<_, _, Sc, _>(tgt, &mut state, &scene);
             assert!(mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 32.0);
         }
@@ -211,9 +211,9 @@ mod tests {
         fn inb_to_inb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt = Vertex::from_pos::<Sc>(32.0, Endpoint::Upper);
+            let tgt = Vertex::from_pos::<Sc>(32.0, Endpoint::RIGHT);
 
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt, &mut state, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt, &mut state, &scene);
             assert!(!mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 0.0);
         }
@@ -222,13 +222,13 @@ mod tests {
         fn inb_to_outb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt_l = Vertex::from_pos::<Sc>(-32.0, Endpoint::Lower);
-            let tgt_r = Vertex::from_pos::<Sc>(80.0, Endpoint::Upper);
+            let tgt_l = Vertex::from_pos::<Sc>(-32.0, Endpoint::LEFT);
+            let tgt_r = Vertex::from_pos::<Sc>(80.0, Endpoint::RIGHT);
 
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt_l, &mut state, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt_l, &mut state, &scene);
             assert!(!mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 0.0);
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt_r, &mut state, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt_r, &mut state, &scene);
             assert!(!mutated);
             assert_eq!(state.pos::<AxisX, Sc>(), 0.0);
         }
@@ -238,13 +238,13 @@ mod tests {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt_l = Vertex::from_pos::<Sc>(0.0, Endpoint::Lower);
-            let tgt_r = Vertex::from_pos::<Sc>(0.0, Endpoint::Upper);
+            let tgt_l = Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT);
+            let tgt_r = Vertex::from_pos::<Sc>(0.0, Endpoint::RIGHT);
 
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt_r, &mut state_l, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt_r, &mut state_l, &scene);
             assert!(!mutated);
             assert_eq!(state_l.pos::<AxisX, Sc>(), -32.0);
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt_l, &mut state_r, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt_l, &mut state_r, &scene);
             assert!(!mutated);
             assert_eq!(state_r.pos::<AxisX, Sc>(), 48.0);
         }
@@ -254,13 +254,13 @@ mod tests {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
             let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let tgt_l = Vertex::from_pos::<Sc>(-64.0, Endpoint::Lower);
-            let tgt_r = Vertex::from_pos::<Sc>(96.0, Endpoint::Upper);
+            let tgt_l = Vertex::from_pos::<Sc>(-64.0, Endpoint::LEFT);
+            let tgt_r = Vertex::from_pos::<Sc>(96.0, Endpoint::RIGHT);
 
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt_l, &mut state_l, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt_l, &mut state_l, &scene);
             assert!(mutated);
             assert_eq!(state_l.pos::<AxisX, Sc>(), -64.0);
-            let mutated = skip_from_map::<AxisX, _, Sc, _>(tgt_r, &mut state_r, &scene);
+            let mutated = skip_from_map::<_, _, Sc, _>(tgt_r, &mut state_r, &scene);
             assert!(mutated);
             assert_eq!(state_r.pos::<AxisX, Sc>(), 80.0);
         }

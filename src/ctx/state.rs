@@ -79,8 +79,8 @@ impl<R> State<R> {
         let pos = pos.into();
         let len = len.into();
         AxisVec::new(
-            Edge::from_pos::<S>(pos.get::<AxisX>(), len.get::<AxisX>(), Endpoint::LOW),
-            Edge::from_pos::<S>(pos.get::<AxisY>(), len.get::<AxisY>(), Endpoint::LOW),
+            Edge::from_pos::<S>(pos.get::<AxisX>(), len.get::<AxisX>(), Endpoint::LOWER),
+            Edge::from_pos::<S>(pos.get::<AxisY>(), len.get::<AxisY>(), Endpoint::LOWER),
         )
     }
 
@@ -95,7 +95,7 @@ impl<R> State<R> {
     }
 
     /// Attach the given endpoint of the generic axis `A`. Detaches the inverse of the given `end`.
-    pub fn attach<A: Axis>(&mut self, end: Endpoint) {
+    pub fn attach<A: Axis>(&mut self, end: Endpoint<A>) {
         self.curr_attmask.0 =
             self.curr_attmask.isolate_axis::<A::T>().0 | AxisMask::from_end::<A>(end).0;
     }
@@ -110,8 +110,8 @@ impl<R> State<R> {
         self.curr_attmask
     }
 
-    /// Returns `true` if attached on the given [`Endpoint`] of axis `A`.
-    pub fn end_is_attached<A: Axis>(&self, end: Endpoint) -> bool {
+    /// Returns `true` if attached on the given [`Endpoint`].
+    pub fn end_is_attached<A: Axis>(&self, end: Endpoint<A>) -> bool {
         self.curr_attmask.end_is_set::<A>(end)
     }
 
@@ -120,16 +120,16 @@ impl<R> State<R> {
         self.curr_attmask.any_on_axis::<A>()
     }
 
-    /// Return the attached [`Endpoint`] of axis `A`.
-    pub fn attached_endpoint<A: Axis>(&self) -> Option<Endpoint> {
+    /// Return the attached [`Endpoint<A>`] of axis `A`.
+    pub fn attached_endpoint<A: Axis>(&self) -> Option<Endpoint<A>> {
         self.curr_attmask.first_end::<A>()
     }
 
-    /// Return the displaced [`Endpoint`] of axis `A` or `None` if no displacement has occured since
+    /// Return the displaced [`Endpoint<A>`] of axis `A` or `None` if no displacement has occured since
     /// the last call to [`State::update`]. If certain a new position has been set with a [`Vertex`]
-    /// of an [`Endpoint`] equal to displacement, then calling [`State::inbound_endpoint`] can be
+    /// of an [`Endpoint<A>`] equal to displacement, then calling [`State::inbound_endpoint`] can be
     /// used to avoid assertions.
-    pub fn displaced_endpoint<A: Axis, Sc: Scale>(&self) -> Option<Endpoint> {
+    pub fn displaced_endpoint<A: Axis, Sc: Scale>(&self) -> Option<Endpoint<A>> {
         let a = self.curr_edges.get::<A>().inbound_vertex();
         let b = self
             .last_verts
@@ -138,9 +138,13 @@ impl<R> State<R> {
         Endpoint::from_partial_cmp(a, b)
     }
 
-    /// Return the inbound [`Endpoint`] of the edge on axis `A`.
-    pub fn inbound_endpoint<A: Axis>(&self) -> Endpoint {
-        self.curr_edges.get::<A>().inbound_vertex().endpoint()
+    /// Return the inbound [`Endpoint`].
+    pub fn inbound_endpoint<A: Axis>(&self) -> Endpoint<A> {
+        self.curr_edges
+            .get::<A>()
+            .inbound_vertex()
+            .cast()
+            .endpoint()
     }
 
     /// Set the [`Vertex`] for the given axis `A`.
@@ -168,29 +172,31 @@ impl<R> State<R> {
         self.curr_edges.get::<A>().cast()
     }
 
-    /// Get the [`Vertex`] for the given `end` of axis `A`.
-    pub fn vertex<A: Axis, Sc: Scale>(&self, end: Endpoint) -> Vertex<A> {
-        self.curr_edges.get::<A>().vertex::<Sc>(end).cast()
+    /// Get the [`Vertex`] for the given [`Endpoint`].
+    pub fn vertex<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> Vertex<A> {
+        self.curr_edges.get::<A>().cast().vertex::<Sc>(end).cast()
     }
 
     /// Get the last [`Vertex`] for the given `end` of axis `A`.
-    pub fn last_vertex<A: Axis, Sc: Scale>(&self, end: Endpoint) -> Vertex<A> {
+    pub fn last_vertex<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> Vertex<A> {
         self.last_verts
             .get::<A>()
+            .cast()
             .into_endpoint::<Sc>(end, self.len::<A>())
             .cast()
     }
 
     /// Get the [`Vertex`] tile index for the given `end` of axis `A`.
-    pub fn index<A: Axis, Sc: Scale>(&self, end: Endpoint) -> i32 {
-        self.vertex::<A, Sc>(end).index()
+    pub fn index<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> i32 {
+        dbg!(self.vertex::<A, Sc>(end)).index()
     }
 
     /// Get the last [`Vertex`] tile index for the given `end` of axis `A`.
-    pub fn last_index<A: Axis, Sc: Scale>(&self, end: Endpoint) -> i32 {
+    pub fn last_index<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> i32 {
         self.last_verts
             .get::<A>()
             .into_edge(self.len::<A>())
+            .cast()
             .index::<Sc>(end)
     }
 
@@ -221,23 +227,24 @@ impl<R> State<R> {
     }
 
     /// Returns `true` if the given axis endpoint is on a tile bound.
-    pub fn is_on_bound<A: Axis, Sc: Scale>(&self, end: Endpoint) -> bool {
+    pub fn is_on_bound<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> bool {
         self.vertex::<A, Sc>(end).is_on_bound::<Sc>()
     }
 
-    /// Returns `true` if the given vertex [`Endpoint`] intersects the given tile `index`.
-    pub fn intersects_index<A: Axis, Sc: Scale>(&self, end: Endpoint, index: i32) -> bool {
+    /// Returns `true` if the given vertex [`Endpoint<A>`] intersects the given tile `index`.
+    pub fn intersects_index<A: Axis, Sc: Scale>(&self, end: Endpoint<A>, index: i32) -> bool {
+        println!("target endpoint is {end:?}");
         self.index::<A, Sc>(end) == index
     }
 
-    /// Returns `true` if the given vertex [`Endpoint`] intersects the given [`Vertex`] tile index.
+    /// Returns `true` if the given vertex [`Endpoint<A>`] intersects the given [`Vertex`] tile index.
     pub fn intersects_vertex_index<A: Axis, Sc: Scale>(&self, vert: Vertex<A>) -> bool {
         vert.index() == self.index::<A, Sc>(vert.endpoint())
     }
 
-    /// Returns `true` if the index of the given vertex [`Endpoint`] has changed (relative to the
+    /// Returns `true` if the index of the given vertex [`Endpoint<A>`] has changed (relative to the
     /// last call to [`State::update`]).
-    pub fn index_changed<A: Axis, Sc: Scale>(&self, end: Endpoint) -> bool {
+    pub fn index_changed<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> bool {
         self.index::<A, Sc>(end) != self.last_index::<A, Sc>(end)
     }
 
@@ -276,8 +283,8 @@ impl<R> State<R> {
         Sc: Scale,
         Map: TileMapView<A::T>,
         Ins: TileMapInspect<A::T, Map>,
-        F0: FnOnce(&Self, Endpoint) -> DetachOp,
-        F1: FnOnce(&Self, Endpoint, &Ins) -> bool,
+        F0: FnOnce(&Self, Endpoint<A>) -> DetachOp,
+        F1: FnOnce(&Self, Endpoint<A>, &Ins) -> bool,
     {
         if let Some(end) = self.attached_endpoint::<A>() {
             match state_filter(self, end) {
@@ -627,36 +634,36 @@ mod tests {
             .with_last_pos::<Sc>((10.0, -10.0));
 
         assert_eq!(
-            state0.curr_edges.x().inbound_vertex(),
-            Vertex::from_pos::<Sc>(1.0, Endpoint::Upper)
+            state0.curr_edges.x().inbound_vertex().cast::<AxisX>(),
+            Vertex::from_pos::<Sc>(1.0, Endpoint::RIGHT)
         );
         assert_eq!(
-            state0.last_verts.x(),
-            Vertex::from_pos::<Sc>(-10.0, Endpoint::Upper)
+            state0.last_verts.x().cast::<AxisX>(),
+            Vertex::from_pos::<Sc>(-10.0, Endpoint::RIGHT)
         );
         assert_eq!(
-            state0.curr_edges.y().inbound_vertex(),
-            Vertex::from_pos::<Sc>(0.0, Endpoint::Lower)
+            state0.curr_edges.y().inbound_vertex().cast::<AxisY>(),
+            Vertex::from_pos::<Sc>(0.0, Endpoint::TOP)
         );
         assert_eq!(
-            state0.last_verts.y(),
-            Vertex::from_pos::<Sc>(10.0, Endpoint::Lower)
+            state0.last_verts.y().cast::<AxisY>(),
+            Vertex::from_pos::<Sc>(10.0, Endpoint::TOP)
         );
         assert_eq!(
-            state1.curr_edges.x().inbound_vertex(),
-            Vertex::from_pos::<Sc>(0.0, Endpoint::Lower)
+            state1.curr_edges.x().inbound_vertex().cast::<AxisX>(),
+            Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT)
         );
         assert_eq!(
-            state1.last_verts.x(),
-            Vertex::from_pos::<Sc>(10.0, Endpoint::Lower)
+            state1.last_verts.x().cast::<AxisX>(),
+            Vertex::from_pos::<Sc>(10.0, Endpoint::LEFT)
         );
         assert_eq!(
-            state1.curr_edges.y().inbound_vertex(),
-            Vertex::from_pos::<Sc>(1.0, Endpoint::Upper)
+            state1.curr_edges.y().inbound_vertex().cast::<AxisY>(),
+            Vertex::from_pos::<Sc>(1.0, Endpoint::BOTTOM)
         );
         assert_eq!(
-            state1.last_verts.y(),
-            Vertex::from_pos::<Sc>(-10.0, Endpoint::Upper)
+            state1.last_verts.y().cast::<AxisY>(),
+            Vertex::from_pos::<Sc>(-10.0, Endpoint::BOTTOM)
         );
     }
 }

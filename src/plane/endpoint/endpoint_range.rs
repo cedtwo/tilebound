@@ -3,6 +3,8 @@ use std::ops::*;
 
 use num_traits::ConstOne;
 
+use crate::plane::axis::Axis;
+
 use super::*;
 
 /// # EndpointRange
@@ -11,63 +13,63 @@ use super::*;
 pub trait EndpointRange<T> {
     /// Create an endpoint range from `lower` inclusive and `upper` exclusive elements, mapping
     /// the first and second element to the given [`Endpoint`] and its transpose respectively.
-    fn new_mapped(a: T, b: T, end: Endpoint) -> Self;
+    fn new_mapped<A: Axis>(a: T, b: T, end: Endpoint<A>) -> Self;
 
     /// Create a new endpoint range from `lower` inclusive and `upper` inclusive elements, mapping
-    /// the first and second element to the given [`Endpoint`] and its transpose respectively.
-    fn new_mapped_incl(a: T, b: T, sign: Endpoint) -> Self;
+    /// the first and second element to the given [`Endpoint<A>`] and its transpose respectively.
+    fn new_mapped_incl<A: Axis>(a: T, b: T, end: Endpoint<A>) -> Self;
 
-    /// Get a reference to the [`Endpoint::Lower`] value.
+    /// Get a reference to the [`Endpoint<A>::Lower`] value.
     fn lower(&self) -> &T;
 
-    /// Get a reference to the [`Endpoint::Upper`] value.
+    /// Get a reference to the [`Endpoint<A>::Upper`] value.
     fn upper(&self) -> &T;
 
-    /// Increment the given [`Endpoint`] by one (See [`Endpoint`] for more on orientation).
-    fn incr(&mut self, sign: Endpoint);
+    /// Increment the given [`Endpoint<A>`] by one (See [`Endpoint<A>`] for more on orientation).
+    fn incr<A: Axis>(&mut self, end: Endpoint<A>);
 
-    /// Decrement the given [`Endpoint`] by one (See [`Endpoint`] for more on orientation).
-    fn decr(&mut self, sign: Endpoint);
+    /// Decrement the given [`Endpoint<A>`] by one (See [`Endpoint<A>`] for more on orientation).
+    fn decr<A: Axis>(&mut self, end: Endpoint<A>);
 
-    /// Get the [`Endpoint`] of any single value not equal to `other`. Returns `None` where both
+    /// Get the [`Endpoint<A>`] of any single value not equal to `other`. Returns `None` where both
     /// value are equal, or both values differ.
-    fn endpoint_diff(&self, other: &Self) -> Option<Endpoint>;
+    fn endpoint_diff<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>>;
 
     /// Returns `true` if any part of `self` intersects that of `other`.
     fn intersects(&self, other: &Self) -> bool;
 
-    /// Get the [`Endpoint`] of `other` greater than that of `self`. Returns `None` if no single
-    /// endpoint is greater than `self` (See [`Endpoint`] for more on orientation).
-    fn greater_endpoint(&self, other: &Self) -> Option<Endpoint>;
+    /// Get the [`Endpoint<A>`] of `other` greater than that of `self`. Returns `None` if no single
+    /// endpoint is greater than `self` (See [`Endpoint<A>`] for more on orientation).
+    fn greater_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>>;
 
-    /// Get the first [`Endpoint`] of `other` greater than that of `self`. Returns `None` if no
-    /// single endpoint is greater than `self` (See [`Endpoint`] for more on orientation).
-    fn first_greater_endpoint(&self, other: &Self) -> Option<Endpoint>;
+    /// Get the first [`Endpoint<A>`] of `other` greater than that of `self`. Returns `None` if no
+    /// single endpoint is greater than `self` (See [`Endpoint<A>`] for more on orientation).
+    fn first_greater_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>>;
 
-    /// Get the [`Endpoint`] of `other` lesser than that of `self`. Returns `None` if no single
-    /// endpoint is lesser than `self` (See [`Endpoint`] for more on orientation).
-    fn lesser_endpoint(&self, other: &Self) -> Option<Endpoint>;
+    /// Get the [`Endpoint<A>`] of `other` lesser than that of `self`. Returns `None` if no single
+    /// endpoint is lesser than `self` (See [`Endpoint<A>`] for more on orientation).
+    fn lesser_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>>;
 
-    /// Get the first [`Endpoint`] of `other` lesser than that of `self`. Returns `None` if no single
-    /// endpoint is lesser than `self` (See [`Endpoint`] for more on orientation).
-    fn first_lesser_endpoint(&self, other: &Self) -> Option<Endpoint>;
+    /// Get the first [`Endpoint<A>`] of `other` lesser than that of `self`. Returns `None` if no single
+    /// endpoint is lesser than `self` (See [`Endpoint<A>`] for more on orientation).
+    fn first_lesser_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>>;
 }
 
 impl<T> EndpointRange<T> for std::ops::Range<T>
 where
     T: PartialEq + PartialOrd + Add<T, Output = T> + AddAssign<T> + SubAssign<T> + ConstOne,
 {
-    fn new_mapped(a: T, b: T, end: Endpoint) -> Self {
-        match end {
-            Endpoint::LOW => a..b,
-            Endpoint::UPP => b..a,
+    fn new_mapped<A: Axis>(a: T, b: T, end: Endpoint<A>) -> Self {
+        match *end {
+            EndpointBound::Lower => a..b,
+            EndpointBound::Upper => b..a,
         }
     }
 
-    fn new_mapped_incl(a: T, b: T, sign: Endpoint) -> Self {
-        match sign {
-            Endpoint::LOW => a..b + T::ONE,
-            Endpoint::UPP => b..a + T::ONE,
+    fn new_mapped_incl<A: Axis>(a: T, b: T, end: Endpoint<A>) -> Self {
+        match *end {
+            EndpointBound::Lower => a..b + T::ONE,
+            EndpointBound::Upper => b..a + T::ONE,
         }
     }
 
@@ -79,17 +81,17 @@ where
         &self.end
     }
 
-    fn incr(&mut self, sign: Endpoint) {
-        match sign {
-            Endpoint::LOW => self.start -= T::ONE,
-            Endpoint::UPP => self.end += T::ONE,
+    fn incr<A: Axis>(&mut self, end: Endpoint<A>) {
+        match *end {
+            EndpointBound::Lower => self.start -= T::ONE,
+            EndpointBound::Upper => self.end += T::ONE,
         }
     }
 
-    fn decr(&mut self, sign: Endpoint) {
-        match sign {
-            Endpoint::LOW => self.start -= T::ONE,
-            Endpoint::UPP => self.end += T::ONE,
+    fn decr<A: Axis>(&mut self, end: Endpoint<A>) {
+        match *end {
+            EndpointBound::Lower => self.start -= T::ONE,
+            EndpointBound::Upper => self.end += T::ONE,
         }
     }
 
@@ -97,60 +99,60 @@ where
         self.start < other.end && self.end > other.start
     }
 
-    fn endpoint_diff(&self, other: &Self) -> Option<Endpoint> {
+    fn endpoint_diff<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>> {
         match (self.start == other.start, self.end == other.end) {
             (true, true) => None,
-            (true, false) => Some(Endpoint::LOW),
-            (false, true) => Some(Endpoint::UPP),
+            (true, false) => Some(Endpoint::LOWER),
+            (false, true) => Some(Endpoint::UPPER),
             (false, false) => None,
         }
     }
 
-    fn greater_endpoint(&self, other: &Self) -> Option<Endpoint> {
+    fn greater_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>> {
         match (
             self.start.partial_cmp(&other.start),
             self.end.partial_cmp(&other.end),
         ) {
             (Some(Ordering::Less), Some(Ordering::Equal) | Some(Ordering::Less)) => {
-                Some(Endpoint::LOW)
+                Some(Endpoint::LOWER)
             }
             (Some(Ordering::Equal) | Some(Ordering::Greater), Some(Ordering::Greater)) => {
-                Some(Endpoint::UPP)
+                Some(Endpoint::UPPER)
             }
             _ => None,
         }
     }
 
-    fn first_greater_endpoint(&self, other: &Self) -> Option<Endpoint> {
+    fn first_greater_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>> {
         if self.start > other.start {
-            Some(Endpoint::LOW)
+            Some(Endpoint::LOWER)
         } else if self.end < other.end {
-            Some(Endpoint::UPP)
+            Some(Endpoint::UPPER)
         } else {
             None
         }
     }
 
-    fn lesser_endpoint(&self, other: &Self) -> Option<Endpoint> {
+    fn lesser_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>> {
         match (
             self.start.partial_cmp(&other.start),
             self.end.partial_cmp(&other.end),
         ) {
             (Some(Ordering::Greater), Some(Ordering::Equal) | Some(Ordering::Greater)) => {
-                Some(Endpoint::LOW)
+                Some(Endpoint::LOWER)
             }
             (Some(Ordering::Less) | Some(Ordering::Equal), Some(Ordering::Less)) => {
-                Some(Endpoint::UPP)
+                Some(Endpoint::UPPER)
             }
             _ => None,
         }
     }
 
-    fn first_lesser_endpoint(&self, other: &Self) -> Option<Endpoint> {
+    fn first_lesser_endpoint<A: Axis>(&self, other: &Self) -> Option<Endpoint<A>> {
         if self.start < other.start {
-            Some(Endpoint::LOW)
+            Some(Endpoint::LOWER)
         } else if self.end > other.end {
-            Some(Endpoint::UPP)
+            Some(Endpoint::UPPER)
         } else {
             None
         }

@@ -42,7 +42,7 @@ impl<A: Axis> Delta<A> {
 
     /// Create a new `Delta` from an `f32` position, an edge length, and an [`Endpoint`]
     /// orientation.
-    pub fn from_pos<S: Scale>(t: f32, len: f32, end: Endpoint) -> Self {
+    pub fn from_pos<S: Scale>(t: f32, len: f32, end: Endpoint<A>) -> Self {
         let target = Edge::new(Vertex::from_pos::<S>(t, end), len);
         Self { target }
     }
@@ -60,7 +60,7 @@ impl<A: Axis> Delta<A> {
 
     /// Return the delta [`Endpoint`].
     #[inline]
-    pub const fn end(&self) -> Endpoint {
+    pub const fn end(&self) -> Endpoint<A> {
         self.target.end()
     }
 
@@ -93,14 +93,14 @@ impl<A: Axis> Delta<A> {
 
     /// Return the next (nearest) [`Endpoint`]. This will default to [`Endpoint::Lower`] where the
     /// next position is on both endpoints.
-    pub fn next_endpoint<S: Scale>(&self, origin: Vertex<A>) -> Endpoint {
+    pub fn next_endpoint<S: Scale>(&self, origin: Vertex<A>) -> Endpoint<A> {
         let end = self.end();
         let padding = self.target.padding::<S>();
 
         if padding == 0.0 {
             !end
         } else {
-            let lower_offset = VertexOffset::new_oriented::<S>(padding, end);
+            let lower_offset = VertexOffset::new_oriented::<A, S>(padding, end);
             if origin.is_on_bound::<S>() || end.partial_gt(lower_offset, &origin.offset()) {
                 !end
             } else {
@@ -134,7 +134,7 @@ impl<A: Axis> Delta<A> {
         if origin.is_on_bound::<S>() {
             origin.incr_index();
         } else {
-            origin.set_offset_unchecked(VertexOffset::from_bound::<S>(end));
+            origin.set_offset_unchecked(VertexOffset::from_bound::<A, S>(end));
         }
         origin
     }
@@ -169,7 +169,7 @@ impl<A: Axis> Delta<A> {
         let end = self.end();
 
         let padding = self.target.padding::<S>();
-        let offset = VertexOffset::new_oriented::<S>(padding, end);
+        let offset = VertexOffset::new_oriented::<A, S>(padding, end);
 
         if end
             .partial_ordering(origin.offset(), offset)
@@ -238,7 +238,7 @@ impl<A: Axis> Delta<A> {
                 .partial_gt(self.target.inbound_vertex(), &origin)
         );
         let mut delta = self.delta::<S>(origin);
-        if self.end() != t_origin.end() {
+        if *self.end() != *t_origin.end() {
             delta = -delta
         };
         Delta::from_delta::<S>(t_origin, delta)
@@ -256,94 +256,94 @@ mod tests {
 
     #[test]
     fn next_upper_endpoint() {
-        let origin_r_neg = Vertex::from_pos::<S>(18.0, Endpoint::LOW);
-        let origin_l_neg = Vertex::from_pos::<S>(15.0, Endpoint::LOW);
-        let tgt_neg = Delta::new(Edge::<AxisX>::from_pos::<S>(0.0, 15.0, Endpoint::LOW));
-        let origin_r_pos = Vertex::from_pos::<S>(18.0, Endpoint::UPP);
-        let origin_l_pos = Vertex::from_pos::<S>(15.0, Endpoint::UPP);
-        let tgt_pos = Delta::new(Edge::<AxisX>::from_pos::<S>(32.0, 15.0, Endpoint::UPP));
+        let origin_r_neg = Vertex::from_pos::<S>(18.0, Endpoint::LOWER);
+        let origin_l_neg = Vertex::from_pos::<S>(15.0, Endpoint::LOWER);
+        let tgt_neg = Delta::new(Edge::<AxisX>::from_pos::<S>(0.0, 15.0, Endpoint::LOWER));
+        let origin_r_pos = Vertex::from_pos::<S>(18.0, Endpoint::UPPER);
+        let origin_l_pos = Vertex::from_pos::<S>(15.0, Endpoint::UPPER);
+        let tgt_pos = Delta::new(Edge::<AxisX>::from_pos::<S>(32.0, 15.0, Endpoint::UPPER));
 
         assert_eq!(
             tgt_neg.next_inbound::<S>(origin_r_neg),
-            Vertex::from_bound::<S>(1, Endpoint::LOW)
+            Vertex::from_bound::<S>(1, Endpoint::LOWER)
         );
         assert_eq!(
             tgt_neg.next_inbound::<S>(origin_l_neg),
-            Vertex::from_bound::<S>(0, Endpoint::LOW)
+            Vertex::from_bound::<S>(0, Endpoint::LOWER)
         );
         assert_eq!(
             tgt_pos.next_inbound::<S>(origin_r_pos),
-            Vertex::from_bound::<S>(1, Endpoint::UPP)
+            Vertex::from_bound::<S>(1, Endpoint::UPPER)
         );
         assert_eq!(
             tgt_pos.next_inbound::<S>(origin_l_pos),
-            Vertex::from_bound::<S>(0, Endpoint::UPP)
+            Vertex::from_bound::<S>(0, Endpoint::UPPER)
         );
     }
 
     #[test]
     fn next_lower_endpoint() {
-        let origin_r = Vertex::from_pos::<S>(18.0, Endpoint::LOW);
-        let origin_l = Vertex::from_pos::<S>(15.0, Endpoint::LOW);
-        let tgt = Delta::new(Edge::<AxisX>::from_pos::<S>(0.0, 15.0, Endpoint::LOW));
+        let origin_r = Vertex::from_pos::<S>(18.0, Endpoint::LOWER);
+        let origin_l = Vertex::from_pos::<S>(15.0, Endpoint::LOWER);
+        let tgt = Delta::new(Edge::<AxisX>::from_pos::<S>(0.0, 15.0, Endpoint::LOWER));
 
         assert_eq!(
             tgt.next_outbound::<S>(origin_r),
-            Vertex::from_parts::<S>(1, 1.0, Endpoint::LOW)
+            Vertex::from_parts::<S>(1, 1.0, Endpoint::LOWER)
         );
         assert_eq!(
             tgt.next_outbound::<S>(origin_l),
-            Vertex::from_parts::<S>(0, 1.0, Endpoint::LOW)
+            Vertex::from_parts::<S>(0, 1.0, Endpoint::LOWER)
         );
     }
 
     #[test]
     fn next_endpoint() {
-        let tgt_16 = Delta::new(Edge::<AxisX>::from_pos::<S>(1.0, 16.0, Endpoint::LOW));
-        let tgt_10 = Delta::new(Edge::<AxisX>::from_pos::<S>(1.0, 10.0, Endpoint::LOW));
+        let tgt_16 = Delta::new(Edge::<AxisX>::from_pos::<S>(1.0, 16.0, Endpoint::LOWER));
+        let tgt_10 = Delta::new(Edge::<AxisX>::from_pos::<S>(1.0, 10.0, Endpoint::LOWER));
 
         assert_eq!(
-            tgt_16.next_endpoint::<S>(Vertex::from_pos::<S>(17.0, Endpoint::LOW)),
-            Endpoint::UPP
+            tgt_16.next_endpoint::<S>(Vertex::from_pos::<S>(17.0, Endpoint::LOWER)),
+            Endpoint::UPPER
         );
         assert_eq!(
-            tgt_16.next_endpoint::<S>(Vertex::from_pos::<S>(16.0, Endpoint::LOW)),
-            Endpoint::UPP
+            tgt_16.next_endpoint::<S>(Vertex::from_pos::<S>(16.0, Endpoint::LOWER)),
+            Endpoint::UPPER
         );
         assert_eq!(
-            tgt_16.next_endpoint::<S>(Vertex::from_pos::<S>(15.0, Endpoint::LOW)),
-            Endpoint::UPP
+            tgt_16.next_endpoint::<S>(Vertex::from_pos::<S>(15.0, Endpoint::LOWER)),
+            Endpoint::UPPER
         );
 
         assert_eq!(
-            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(17.0, Endpoint::LOW)),
-            Endpoint::LOW
+            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(17.0, Endpoint::LOWER)),
+            Endpoint::LOWER
         );
         assert_eq!(
-            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(16.0, Endpoint::LOW)),
-            Endpoint::UPP
+            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(16.0, Endpoint::LOWER)),
+            Endpoint::UPPER
         );
         assert_eq!(
-            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(15.0, Endpoint::LOW)),
-            Endpoint::UPP
+            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(15.0, Endpoint::LOWER)),
+            Endpoint::UPPER
         );
         assert_eq!(
-            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(6.0, Endpoint::LOW)),
-            Endpoint::LOW
+            tgt_10.next_endpoint::<S>(Vertex::from_pos::<S>(6.0, Endpoint::LOWER)),
+            Endpoint::LOWER
         );
     }
 
     #[test]
     fn transpose() {
         // 32.0 to 16.0
-        let origin_neg = Vertex::from_pos::<S>(32.0, Endpoint::LOW);
-        let tgt_neg = Delta::new(Edge::<AxisX>::from_pos::<S>(16.0, 1.0, Endpoint::LOW));
+        let origin_neg = Vertex::from_pos::<S>(32.0, Endpoint::LOWER);
+        let tgt_neg = Delta::new(Edge::<AxisX>::from_pos::<S>(16.0, 1.0, Endpoint::LOWER));
         // 0.0 to 16.0
-        let origin_pos = Vertex::from_pos::<S>(0.0, Endpoint::UPP);
-        let tgt_pos = Delta::new(Edge::<AxisX>::from_pos::<S>(16.0, 1.0, Endpoint::UPP));
+        let origin_pos = Vertex::from_pos::<S>(0.0, Endpoint::UPPER);
+        let tgt_pos = Delta::new(Edge::<AxisX>::from_pos::<S>(16.0, 1.0, Endpoint::UPPER));
 
-        let t_edge_neg = Edge::from_pos::<S>(0.0, 1.0, Endpoint::LOW);
-        let t_edge_pos = Edge::from_pos::<S>(0.0, 1.0, Endpoint::UPP);
+        let t_edge_neg = Edge::from_pos::<S>(0.0, 1.0, Endpoint::LOWER);
+        let t_edge_pos = Edge::from_pos::<S>(0.0, 1.0, Endpoint::UPPER);
 
         let neg_to_neg = tgt_neg.transpose_unchecked::<S>(origin_neg, t_edge_neg);
         let neg_to_pos = tgt_neg.transpose_unchecked::<S>(origin_neg, t_edge_pos);
@@ -352,20 +352,20 @@ mod tests {
 
         assert_eq!(
             neg_to_neg.target,
-            Edge::new(Vertex::from_pos::<S>(-16.0, Endpoint::LOW), 1.0)
+            Edge::new(Vertex::from_pos::<S>(-16.0, Endpoint::LOWER), 1.0)
         );
         assert_eq!(
             neg_to_pos.target,
-            Edge::new(Vertex::from_pos::<S>(16.0, Endpoint::UPP), 1.0)
+            Edge::new(Vertex::from_pos::<S>(16.0, Endpoint::UPPER), 1.0)
         );
 
         assert_eq!(
             pos_to_neg.target,
-            Edge::new(Vertex::from_pos::<S>(-16.0, Endpoint::LOW), 1.0)
+            Edge::new(Vertex::from_pos::<S>(-16.0, Endpoint::LOWER), 1.0)
         );
         assert_eq!(
             pos_to_pos.target,
-            Edge::new(Vertex::from_pos::<S>(16.0, Endpoint::UPP), 1.0)
+            Edge::new(Vertex::from_pos::<S>(16.0, Endpoint::UPPER), 1.0)
         );
     }
 }

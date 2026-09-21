@@ -1,7 +1,7 @@
 use std::ops::{Deref, Range};
 
 use crate::plane::axis::{Axis, AxisVec, AxisX, AxisY};
-use crate::plane::endpoint::{Endpoint, EndpointRange};
+use crate::plane::endpoint::{Endpoint, EndpointBound, EndpointRange};
 
 /// # TileMap
 ///
@@ -12,19 +12,24 @@ pub trait TileMap {
     /// The tilemap element type.
     type El;
 
-    /// Get the number of elements in a slice of axis `A`.
+    /// Get the number of indices in axis `A`. See also [`TileMap::slice_len`].
     fn axis_len<A: Axis>(&self) -> usize;
 
-    /// Get the number of elements on both axes.
+    /// Get total number of elements in a slice of axis `A`.
+    fn slice_len<A: Axis>(&self) -> usize {
+        self.axis_len::<A::T>()
+    }
+
+    /// Get the number of rows and columns respectively.
     fn size(&self) -> AxisVec<usize> {
         AxisVec::new(self.axis_len::<AxisX>(), self.axis_len::<AxisY>())
     }
 
-    /// Get the lower/upper inclusive tile index for the given [`Endpoint`] of axis `A`.
-    fn bound_index<A: Axis>(&self, end: Endpoint) -> usize {
-        match end {
-            Endpoint::LOW => 0,
-            Endpoint::UPP => self.axis_len::<A>() - 1,
+    /// Get the lower/upper inclusive index for the given [`Endpoint`] of axis `A`.
+    fn bound_index<A: Axis>(&self, end: Endpoint<A>) -> usize {
+        match *end {
+            EndpointBound::Lower => 0,
+            EndpointBound::Upper => self.slice_len::<A>() - 1,
         }
     }
 

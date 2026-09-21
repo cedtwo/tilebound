@@ -36,7 +36,8 @@
 //! ---|---
 //! [`Scene`](prelude::Scene) | Wraps a tilemap type with some minimal `tilebound` configuration.
 //! [`State`](prelude::State) | An intermediate used for bounding box displacement operations.
-//! [`Vertex`](topology::vertex::Vertex)/[`Edge`](topology::edge::Edge)/[`Endpoint`](prelude::Endpoint) | Bounding box position alignment, orientation, displacement and indices.
+//! [`Endpoint`](prelude::Endpoint) | Describes a direction on an axis, orientating numerical operations.
+//! [`Vertex`](topology::vertex::Vertex)/[`Edge`](topology::edge::Edge) | A bounding box `Endpoint` position for alignment and displacement.
 //! [`Delta`](ctx::delta::Delta) | Steps over a delta from an *origin* to a *target* producing vertex positions.
 //! [`Break`](ctx::brk::Break) | A simple enum return type for displacement operations and control-flow, possibly including collision data.
 //!

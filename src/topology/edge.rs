@@ -1,7 +1,7 @@
 use std::ops::{Range, RangeInclusive};
 
 use crate::plane::axis::DynAxis;
-use crate::plane::endpoint::Endpoint;
+use crate::plane::endpoint::{Endpoint, EndpointBound};
 use crate::plane::scale::Scale;
 use crate::topology::vertex::{Vertex, VertexOffset};
 
@@ -13,8 +13,9 @@ pub type RawEdge = Edge<DynAxis>;
 ///
 /// A one-dimensional endpoint position and length.
 ///
-/// In contrast to [`Vertex`], `Edge` allows for operations for both adjacent vertices. `Edge` is
-/// considered *directed*, referring to the contained [`Vertex`] as the *inbound* [`Vertex`].
+/// In contrast to [`Vertex`], `Edge` enables operations relating to the adjacent vertex (often the
+/// other side of a bounding box). `Edge` is considered *directed*, referring to the contained
+/// [`Vertex`] as the *inbound* [`Vertex`].
 #[derive(Debug, PartialEq)]
 pub struct Edge<A> {
     /// The *inbound* vertex.
@@ -41,16 +42,16 @@ impl<A> Edge<A> {
         Self { vertex, len }
     }
 
-    /// Create a new `Edge` from the given `f32` position and [`Endpoint`].
+    /// Create a new `Edge` from the given `f32` position and [`Endpoint<A>`].
     #[inline]
-    pub fn from_pos<Sc: Scale>(p: f32, len: f32, end: Endpoint) -> Self {
+    pub fn from_pos<Sc: Scale>(p: f32, len: f32, end: Endpoint<A>) -> Self {
         let vertex = Vertex::from_pos::<Sc>(p, end);
         Self::new(vertex, len)
     }
 
-    /// Returns the vertex at the given endpoint [`Endpoint`].
-    pub fn vertex<Sc: Scale>(&self, end: Endpoint) -> Vertex<A> {
-        if end.const_eq(self.end() as u8) {
+    /// Returns the vertex at the given [`Endpoint`].
+    pub fn vertex<Sc: Scale>(&self, end: Endpoint<A>) -> Vertex<A> {
+        if end == self.end() {
             self.vertex
         } else {
             Vertex::<A>::from_pos::<Sc>(self.pos::<Sc>(end), end)
@@ -63,14 +64,14 @@ impl<A> Edge<A> {
     }
 
     /// Set the inbound vertex. Modifying the `Vertex` is primarily used for translation or changing
-    /// the *inbound* [`Endpoint`]. See also [`Edge::reverse`] and [`Edge::translate`].
+    /// the *inbound* [`Endpoint<A>`]. See also [`Edge::reverse`] and [`Edge::translate`].
     pub const fn set_vertex(&mut self, vertex: Vertex<A>) {
         self.vertex = vertex;
     }
 
-    /// Get the inbound vertex [`Endpoint`].
+    /// Get the inbound vertex [`Endpoint<A>`].
     #[inline]
-    pub const fn end(&self) -> Endpoint {
+    pub const fn end(&self) -> Endpoint<A> {
         self.vertex.endpoint()
     }
 
@@ -80,31 +81,31 @@ impl<A> Edge<A> {
         self.len
     }
 
-    /// Get the `f32` position at the given [`Endpoint`]. See also [`Edge::lower_pos`].
-    pub fn pos<Sc: Scale>(&self, end: Endpoint) -> f32 {
-        if end.const_eq(self.end() as u8) {
+    /// Get the `f32` position at the given [`Endpoint<A>`]. See also [`Edge::lower_pos`].
+    pub fn pos<Sc: Scale>(&self, end: Endpoint<A>) -> f32 {
+        if end == self.end() {
             self.vertex.to_pos::<Sc>()
         } else {
             self.end().decr_n(self.vertex.to_pos::<Sc>(), self.len)
         }
     }
 
-    /// Return the [`Endpoint::Lower`] `f32` position. This is usually used as shorthand to return
+    /// Return the [`Endpoint<A>::Lower`] `f32` position. This is usually used as shorthand to return
     /// the top/left position of an `Edge`.
     #[inline]
     pub fn lower_pos<Sc: Scale>(&self) -> f32 {
-        self.pos::<Sc>(Endpoint::LOW)
+        self.pos::<Sc>(Endpoint::LOWER)
     }
 
-    /// Get the [`VertexOffset`] at the given [`Endpoint`].
-    pub fn offset<Sc: Scale>(&self, end: Endpoint) -> VertexOffset {
-        if end.const_eq(self.end() as u8) {
+    /// Get the [`VertexOffset`] at the given [`Endpoint<A>`].
+    pub fn offset<Sc: Scale>(&self, end: Endpoint<A>) -> VertexOffset {
+        if end == self.end() {
             self.vertex.offset()
         } else {
             let mut offset = VertexOffset::new::<Sc>(
                 self.end().decr_n(self.vertex.offset_value(), self.len) % Sc::SCALE,
             );
-            offset.align_to_bound::<Sc>(end);
+            offset.align_to_bound::<A, Sc>(end);
             offset
         }
     }
@@ -128,16 +129,16 @@ impl<A> Edge<A> {
         self
     }
 
-    /// Set the inbound [`Endpoint`], possibly reversing the edge.
-    pub fn set_inbound_end<Sc: Scale>(&mut self, end: Endpoint) {
+    /// Set the inbound [`Endpoint<A>`], possibly reversing the edge.
+    pub fn set_inbound_end<Sc: Scale>(&mut self, end: Endpoint<A>) {
         if self.vertex.endpoint() != end {
             self.reverse::<Sc>();
         }
     }
 
-    /// Return an `Edge` with the given inbound [`Endpoint`].
+    /// Return an `Edge` with the given inbound [`Endpoint<A>`].
     #[inline]
-    pub fn with_inbound_end<Sc: Scale>(mut self, end: Endpoint) -> Self {
+    pub fn with_inbound_end<Sc: Scale>(mut self, end: Endpoint<A>) -> Self {
         self.set_inbound_end::<Sc>(end);
         self
     }
@@ -174,7 +175,7 @@ impl<A> Edge<A> {
 
     /// Get the vertex endpoint closest to an outer tile bound. Returns `None` where both vertices
     /// are of an equal distance from their respective outer bound.
-    pub fn nearest_bound_end<Sc: Scale>(self) -> Option<Endpoint> {
+    pub fn nearest_bound_end<Sc: Scale>(self) -> Option<Endpoint<A>> {
         let a = self.inbound_vertex();
         let b = self.adjacent_vertex::<Sc>();
 
@@ -182,16 +183,16 @@ impl<A> Edge<A> {
         let mut b_offset = b.offset();
 
         // Compare values relative to the same endpoint.
-        match a.endpoint() {
-            Endpoint::LOW => a_offset.reverse::<Sc>(),
-            Endpoint::UPP => b_offset.reverse::<Sc>(),
+        match *a.endpoint() {
+            EndpointBound::Lower => a_offset.reverse::<Sc>(),
+            EndpointBound::Upper => b_offset.reverse::<Sc>(),
         };
 
         match a_offset.partial_cmp(&b_offset) {
             Some(std::cmp::Ordering::Less) => Some(!self.end()),
             Some(std::cmp::Ordering::Equal) => None,
             Some(std::cmp::Ordering::Greater) => Some(self.end()),
-            None => unreachable!("Expected vertices of an equal `Endpoint`"),
+            None => unreachable!("Expected vertices of an equal `Endpoint<A>`"),
         }
     }
 
@@ -205,16 +206,16 @@ impl<A> Edge<A> {
         let mut b_offset = b.offset();
 
         // Compare values relative to the same endpoint.
-        match a.endpoint() {
-            Endpoint::LOW => a_offset.reverse::<Sc>(),
-            Endpoint::UPP => b_offset.reverse::<Sc>(),
+        match *a.endpoint() {
+            EndpointBound::Lower => a_offset.reverse::<Sc>(),
+            EndpointBound::Upper => b_offset.reverse::<Sc>(),
         };
 
         match a_offset.partial_cmp(&b_offset) {
             Some(std::cmp::Ordering::Less) => Some(b),
             Some(std::cmp::Ordering::Equal) => None,
             Some(std::cmp::Ordering::Greater) => Some(a),
-            None => unreachable!("Expected vertices of an equal `Endpoint`"),
+            None => unreachable!("Expected vertices of an equal `Endpoint<A>`"),
         }
     }
 
@@ -230,9 +231,9 @@ impl<A> Edge<A> {
         (self.len() / Sc::SCALE).ceil() as u32
     }
 
-    /// Get the tile index at the given [`Endpoint`].
-    pub fn index<Sc: Scale>(&self, end: Endpoint) -> i32 {
-        if end.const_eq(self.end() as u8) {
+    /// Get the tile index at the given [`Endpoint<A>`].
+    pub fn index<Sc: Scale>(&self, end: Endpoint<A>) -> i32 {
+        if end == self.end() {
             self.vertex.index()
         } else {
             // Index requires calculating the offset so must create a vertex regardless.
@@ -244,26 +245,26 @@ impl<A> Edge<A> {
     /// upper bound is intersected.
     pub fn range<Sc: Scale>(&self) -> RangeInclusive<f32> {
         let transform = self.vertex.to_pos::<Sc>();
-        match self.vertex.endpoint() {
-            Endpoint::LOW => transform..=(transform + self.len),
-            Endpoint::UPP => (transform - self.len)..=transform,
+        match *self.vertex.endpoint() {
+            EndpointBound::Lower => transform..=(transform + self.len),
+            EndpointBound::Upper => (transform - self.len)..=transform,
         }
     }
 
     /// Get the edge as an `i32` tile range. This returns [`RangeInclusive`] to reflect that the
     /// upper bound is intersected.
     pub fn index_range<Sc: Scale>(&self) -> Range<i32> {
-        let (start, end) = match self.end() {
-            Endpoint::LOW => {
+        let (start, end) = match *self.end() {
+            EndpointBound::Lower => {
                 let start = self.vertex.index();
                 let end_t = self.vertex.to_pos::<Sc>() + self.len;
-                let end = Vertex::<A>::from_pos::<Sc>(end_t, Endpoint::UPP).index();
+                let end = Vertex::<A>::from_pos::<Sc>(end_t, Endpoint::UPPER).index();
                 (start, end)
             }
-            Endpoint::UPP => {
+            EndpointBound::Upper => {
                 let end = self.vertex.index();
                 let start_t = self.vertex.to_pos::<Sc>() - self.len;
-                let start = Vertex::<A>::from_pos::<Sc>(start_t, Endpoint::LOW).index();
+                let start = Vertex::<A>::from_pos::<Sc>(start_t, Endpoint::LOWER).index();
                 (start, end)
             }
         };
@@ -279,8 +280,8 @@ impl<A> Edge<A> {
         tile_len - len
     }
 
-    /// Returns `true` if the endpoint for the given [`Endpoint`] is on a tile bound.
-    pub fn is_on_bound<Sc: Scale>(&self, end: Endpoint) -> bool {
+    /// Returns `true` if the endpoint for the given [`Endpoint<A>`] is on a tile bound.
+    pub fn is_on_bound<Sc: Scale>(&self, end: Endpoint<A>) -> bool {
         self.pos::<Sc>(end) % Sc::SCALE == 0.0
     }
 
@@ -302,12 +303,10 @@ impl<A> Edge<A> {
 #[cfg(test)]
 mod tests {
 
-    use crate::plane::axis::AxisX;
+    use super::*;
     use crate::plane::scale::ConSc;
 
     type Sc = ConSc<16>;
-
-    use super::*;
 
     mod edge {
 
@@ -315,8 +314,8 @@ mod tests {
 
         #[test]
         fn as_range() {
-            let edge_neg = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW), 16.0);
-            let edge_pos = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::UPP), 16.0);
+            let edge_neg = Edge::new(Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT), 16.0);
+            let edge_pos = Edge::new(Vertex::from_pos::<Sc>(16.0, Endpoint::RIGHT), 16.0);
 
             let edge_neg_range = edge_neg.range::<Sc>();
             let edge_pos_range = edge_pos.range::<Sc>();
@@ -327,8 +326,8 @@ mod tests {
 
         #[test]
         fn as_index_range() {
-            let edge_neg = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW), 32.0);
-            let edge_pos = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(32.0, Endpoint::UPP), 32.0);
+            let edge_neg = Edge::new(Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT), 32.0);
+            let edge_pos = Edge::new(Vertex::from_pos::<Sc>(32.0, Endpoint::RIGHT), 32.0);
 
             let edge_neg_idx_range = edge_neg.index_range::<Sc>();
             let edge_pos_idx_range = edge_pos.index_range::<Sc>();
@@ -339,8 +338,8 @@ mod tests {
 
         #[test]
         fn origin() {
-            let edge_neg = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW), 32.0);
-            let edge_pos = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(32.0, Endpoint::UPP), 32.0);
+            let edge_neg = Edge::new(Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT), 32.0);
+            let edge_pos = Edge::new(Vertex::from_pos::<Sc>(32.0, Endpoint::RIGHT), 32.0);
 
             let edge_neg_origin = edge_neg.lower_pos::<Sc>();
             let edge_pos_origin = edge_pos.lower_pos::<Sc>();
@@ -351,13 +350,10 @@ mod tests {
 
         #[test]
         fn padding() {
-            let edge_neg_nopad =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW), 32.0);
-            let edge_pos_nopad =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(32.0, Endpoint::UPP), 32.0);
-            let edge_neg_pad = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 31.0);
-            let edge_pos_pad =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(31.0, Endpoint::UPP), 31.0);
+            let edge_neg_nopad = Edge::new(Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT), 32.0);
+            let edge_pos_nopad = Edge::new(Vertex::from_pos::<Sc>(32.0, Endpoint::RIGHT), 32.0);
+            let edge_neg_pad = Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 31.0);
+            let edge_pos_pad = Edge::new(Vertex::from_pos::<Sc>(31.0, Endpoint::RIGHT), 31.0);
 
             assert_eq!(edge_neg_nopad.padding::<Sc>(), 0.0);
             assert_eq!(edge_neg_pad.padding::<Sc>(), 1.0);
@@ -367,25 +363,23 @@ mod tests {
 
         #[test]
         fn is_on_end() {
-            let edge_neg = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 15.0);
-            let edge_pos = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::UPP), 15.0);
+            let edge_neg = Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 15.0);
+            let edge_pos = Edge::new(Vertex::from_pos::<Sc>(15.0, Endpoint::RIGHT), 15.0);
 
-            assert!(!edge_neg.is_on_bound::<Sc>(Endpoint::LOW,));
-            assert!(edge_neg.is_on_bound::<Sc>(Endpoint::UPP,));
-            assert!(edge_pos.is_on_bound::<Sc>(Endpoint::LOW,));
-            assert!(!edge_pos.is_on_bound::<Sc>(Endpoint::UPP,));
+            assert!(!edge_neg.is_on_bound::<Sc>(Endpoint::LEFT,));
+            assert!(edge_neg.is_on_bound::<Sc>(Endpoint::RIGHT,));
+            assert!(edge_pos.is_on_bound::<Sc>(Endpoint::LEFT,));
+            assert!(!edge_pos.is_on_bound::<Sc>(Endpoint::RIGHT,));
         }
 
         #[test]
         fn is_on_either_end() {
-            let edge_neg_on_pos =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 15.0);
-            let edge_pos_on_neg =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::UPP), 15.0);
+            let edge_neg_on_pos = Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 15.0);
+            let edge_pos_on_neg = Edge::new(Vertex::from_pos::<Sc>(15.0, Endpoint::RIGHT), 15.0);
             let edge_neg_not_on_bound =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 14.0);
+                Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 14.0);
             let edge_pos_not_on_bound =
-                Edge::new(Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::UPP), 14.0);
+                Edge::new(Vertex::from_pos::<Sc>(15.0, Endpoint::RIGHT), 14.0);
 
             assert!(edge_neg_on_pos.is_on_either_bound::<Sc>());
             assert!(edge_pos_on_neg.is_on_either_bound::<Sc>());
@@ -395,65 +389,59 @@ mod tests {
 
         #[test]
         fn endpoint_index() {
-            let edge_neg_0 = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW), 32.0);
-            let edge_neg_1 = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 32.0);
-            let edge_pos_0 = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(32.0, Endpoint::UPP), 32.0);
-            let edge_pos_1 = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(31.0, Endpoint::UPP), 32.0);
+            let edge_neg_0 = Edge::new(Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT), 32.0);
+            let edge_neg_1 = Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 32.0);
+            let edge_pos_0 = Edge::new(Vertex::from_pos::<Sc>(32.0, Endpoint::RIGHT), 32.0);
+            let edge_pos_1 = Edge::new(Vertex::from_pos::<Sc>(31.0, Endpoint::RIGHT), 32.0);
 
-            assert_eq!(edge_neg_0.index::<Sc>(Endpoint::LOW,), 0);
-            assert_eq!(edge_neg_0.index::<Sc>(Endpoint::UPP,), 1);
-            assert_eq!(edge_neg_1.index::<Sc>(Endpoint::LOW,), 0);
-            assert_eq!(edge_neg_1.index::<Sc>(Endpoint::UPP,), 2);
-            assert_eq!(edge_pos_0.index::<Sc>(Endpoint::LOW,), 0);
-            assert_eq!(edge_pos_0.index::<Sc>(Endpoint::UPP,), 1);
-            assert_eq!(edge_pos_1.index::<Sc>(Endpoint::LOW,), -1);
-            assert_eq!(edge_pos_1.index::<Sc>(Endpoint::UPP,), 1);
+            assert_eq!(edge_neg_0.index::<Sc>(Endpoint::LEFT,), 0);
+            assert_eq!(edge_neg_0.index::<Sc>(Endpoint::RIGHT,), 1);
+            assert_eq!(edge_neg_1.index::<Sc>(Endpoint::LEFT,), 0);
+            assert_eq!(edge_neg_1.index::<Sc>(Endpoint::RIGHT,), 2);
+            assert_eq!(edge_pos_0.index::<Sc>(Endpoint::LEFT,), 0);
+            assert_eq!(edge_pos_0.index::<Sc>(Endpoint::RIGHT,), 1);
+            assert_eq!(edge_pos_1.index::<Sc>(Endpoint::LEFT,), -1);
+            assert_eq!(edge_pos_1.index::<Sc>(Endpoint::RIGHT,), 1);
         }
 
         #[test]
         fn endpoint_offset() {
-            let edge_neg = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 15.0);
-            let edge_pos = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::UPP), 15.0);
+            let edge_neg = Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 15.0);
+            let edge_pos = Edge::new(Vertex::from_pos::<Sc>(15.0, Endpoint::RIGHT), 15.0);
 
             assert_eq!(
-                edge_neg.offset::<Sc>(Endpoint::LOW),
+                edge_neg.offset::<Sc>(Endpoint::LEFT),
                 VertexOffset::new::<Sc>(1.0)
             );
             assert_eq!(
-                edge_neg.offset::<Sc>(Endpoint::UPP),
+                edge_neg.offset::<Sc>(Endpoint::RIGHT),
                 VertexOffset::new::<Sc>(16.,)
             );
             assert_eq!(
-                edge_pos.offset::<Sc>(Endpoint::LOW),
+                edge_pos.offset::<Sc>(Endpoint::LEFT),
                 VertexOffset::new::<Sc>(0.0)
             );
             assert_eq!(
-                edge_pos.offset::<Sc>(Endpoint::UPP),
+                edge_pos.offset::<Sc>(Endpoint::RIGHT),
                 VertexOffset::new::<Sc>(15.,)
             );
         }
 
         #[test]
         fn endpoint_tfm() {
-            let edge_neg = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW), 16.0);
-            let edge_pos = Edge::new(Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::UPP), 15.0);
+            let edge_neg = Edge::new(Vertex::from_pos::<Sc>(1.0, Endpoint::LEFT), 16.0);
+            let edge_pos = Edge::new(Vertex::from_pos::<Sc>(16.0, Endpoint::RIGHT), 15.0);
 
-            assert_eq!(edge_neg.pos::<Sc>(Endpoint::LOW,), 1.0);
-            assert_eq!(edge_neg.pos::<Sc>(Endpoint::UPP,), 17.0);
-            assert_eq!(edge_pos.pos::<Sc>(Endpoint::LOW,), 1.0);
-            assert_eq!(edge_pos.pos::<Sc>(Endpoint::UPP,), 16.0);
+            assert_eq!(edge_neg.pos::<Sc>(Endpoint::LEFT,), 1.0);
+            assert_eq!(edge_neg.pos::<Sc>(Endpoint::RIGHT,), 17.0);
+            assert_eq!(edge_pos.pos::<Sc>(Endpoint::LEFT,), 1.0);
+            assert_eq!(edge_pos.pos::<Sc>(Endpoint::RIGHT,), 16.0);
         }
 
         #[test]
         fn tile_len() {
-            let edge_neg = Edge::new(
-                Vertex::<AxisX>::from_parts::<Sc>(0, 0.0, Endpoint::LOW),
-                32.0,
-            );
-            let edge_pos = Edge::new(
-                Vertex::<AxisX>::from_parts::<Sc>(3, 0.0, Endpoint::UPP),
-                32.0,
-            );
+            let edge_neg = Edge::new(Vertex::from_parts::<Sc>(0, 0.0, Endpoint::LEFT), 32.0);
+            let edge_pos = Edge::new(Vertex::from_parts::<Sc>(3, 0.0, Endpoint::RIGHT), 32.0);
 
             assert_eq!(edge_neg.tile_len::<Sc>(), 2);
             assert_eq!(edge_pos.tile_len::<Sc>(), 2);
@@ -461,19 +449,19 @@ mod tests {
 
         #[test]
         fn nearest_bound_end() {
-            let edge_0 = Edge::<AxisX>::from_pos::<Sc>(8.0, 16.0, Endpoint::LOW);
+            let edge_0 = Edge::from_pos::<Sc>(8.0, 16.0, Endpoint::LEFT);
             let edge_0_rev = edge_0.reversed::<Sc>();
-            let edge_1 = Edge::<AxisX>::from_pos::<Sc>(8.0, 17.0, Endpoint::LOW);
+            let edge_1 = Edge::from_pos::<Sc>(8.0, 17.0, Endpoint::LEFT);
             let edge_1_rev = edge_1.reversed::<Sc>();
-            let edge_2 = Edge::<AxisX>::from_pos::<Sc>(6.0, 17.0, Endpoint::LOW);
+            let edge_2 = Edge::from_pos::<Sc>(6.0, 17.0, Endpoint::LEFT);
             let edge_2_rev = edge_2.reversed::<Sc>();
 
             assert_eq!(edge_0.nearest_bound_end::<Sc>(), None);
             assert_eq!(edge_0_rev.nearest_bound_end::<Sc>(), None);
-            assert_eq!(edge_1.nearest_bound_end::<Sc>(), Some(Endpoint::UPP));
-            assert_eq!(edge_1_rev.nearest_bound_end::<Sc>(), Some(Endpoint::UPP));
-            assert_eq!(edge_2.nearest_bound_end::<Sc>(), Some(Endpoint::LOW));
-            assert_eq!(edge_2_rev.nearest_bound_end::<Sc>(), Some(Endpoint::LOW));
+            assert_eq!(edge_1.nearest_bound_end::<Sc>(), Some(Endpoint::RIGHT));
+            assert_eq!(edge_1_rev.nearest_bound_end::<Sc>(), Some(Endpoint::RIGHT));
+            assert_eq!(edge_2.nearest_bound_end::<Sc>(), Some(Endpoint::LEFT));
+            assert_eq!(edge_2_rev.nearest_bound_end::<Sc>(), Some(Endpoint::LEFT));
         }
     }
 }

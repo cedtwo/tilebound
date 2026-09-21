@@ -1,9 +1,8 @@
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 
 use crate::plane::axis::{Axis, DynAxis};
-use crate::plane::endpoint::Endpoint;
+use crate::plane::endpoint::{Endpoint, EndpointBound};
 use crate::plane::scale::Scale;
 
 use crate::topology::edge::Edge;
@@ -16,17 +15,19 @@ pub type RawVertex = Vertex<DynAxis>;
 ///
 /// A one-dimensional endpoint position.
 ///
-/// `Vertex` differs from an `f32` position due the use of [`Endpoint`] orientation. This allows two
-/// vertices to be positioned at the same point, but occupy different tiles. See also [`VertexOffset`].
+/// `Vertex` differs from an `f32` position in how it handles tile indices. Vertices use their inner
+/// [`Endpoint`] to decide which tile is being intersected when *exactly* on a tile bound. This
+/// allows two vertices to be positioned at the same point, but occupy different tiles. See also
+/// [`VertexOffset`] and [`Edge`].
 ///
 /// ```rust
 /// # use tilebound::prelude::*;
 /// # use tilebound::topology::vertex::Vertex;
 /// type Sc = ConSc<16>;
 ///
-/// // Two vertices sharing the same tile bound.
-/// let tile_0_end = Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::Upper);
-/// let tile_1_start = Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::Lower);
+/// // Two vertices sharing the same tile bound at position `16.0`.
+/// let tile_0_end = Vertex::from_pos::<Sc>(16.0, Endpoint::RIGHT);
+/// let tile_1_start = Vertex::from_pos::<Sc>(16.0, Endpoint::LEFT);
 ///
 /// // Both vertices intersect different tiles.
 /// assert_eq!(tile_0_end.index(), 0);
@@ -36,10 +37,8 @@ pub type RawVertex = Vertex<DynAxis>;
 /// ```
 #[derive(Default)]
 pub struct Vertex<A> {
-    /// The vertex axis.
-    axis: PhantomData<A>,
     /// The endpoint orientation.
-    pub(crate) end: Endpoint,
+    pub(crate) end: Endpoint<A>,
     /// The intersected tile index.
     pub(crate) index: i32,
     /// The offset within the tile.
@@ -49,7 +48,6 @@ pub struct Vertex<A> {
 impl<A> Debug for Vertex<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Vertex")
-            .field("axis", &self.axis)
             .field("end", &self.end)
             .field("index", &self.index)
             .field("offset", &self.offset)
@@ -60,7 +58,6 @@ impl<A> Debug for Vertex<A> {
 impl<A> Clone for Vertex<A> {
     fn clone(&self) -> Self {
         Self {
-            axis: self.axis.clone(),
             end: self.end.clone(),
             index: self.index.clone(),
             offset: self.offset.clone(),
@@ -82,19 +79,17 @@ impl<A> Vertex<A> {
     /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
-    /// // A vertex on the upper bound of index `-1`.
-    /// // Any edge containing this endpoint does not intersect index `0`.
-    /// let vertex_on_bound = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::Upper);
+    /// // A vertex endpoint on the left of tile index `0` (intersects index `-1`).
+    /// let vertex_on_bound = Vertex::from_pos::<Sc>(0.0, Endpoint::RIGHT);
     /// assert_eq!(vertex_on_bound.index(), -1);
     /// assert_eq!(vertex_on_bound.offset_value(), 16.0);
     ///
-    /// let vertex_offset = Vertex::<AxisX>::from_pos::<Sc>(0.1, Endpoint::Upper);
-    /// // A vertex near (but not on) the lower bound of index `0`.
-    /// // Any edge containing this endpoint intersects index `0`.
+    /// // A vertex endpoint exceeding the leftmost bound of tile index `0` (intersects index `0`).
+    /// let vertex_offset = Vertex::from_pos::<Sc>(0.1, Endpoint::RIGHT);
     /// assert_eq!(vertex_offset.index(), 0);
     /// assert_eq!(vertex_offset.offset_value(), 0.1);
     /// ```
-    pub fn from_pos<Sc: Scale>(pos: f32, end: Endpoint) -> Self {
+    pub fn from_pos<Sc: Scale>(pos: f32, end: Endpoint<A>) -> Self {
         let index = (pos / Sc::SCALE).floor() as i32;
         let offset = pos.rem_euclid(Sc::SCALE);
 
@@ -112,8 +107,8 @@ impl<A> Vertex<A> {
     /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
-    /// let vertex_on_bound = Vertex::<AxisX>::from_parts::<Sc>(0, 0.0, Endpoint::Upper);
-    /// let vertex_offset = Vertex::<AxisX>::from_parts::<Sc>(0, 8.0, Endpoint::Upper);
+    /// let vertex_on_bound = Vertex::from_parts::<Sc>(0, 0.0, Endpoint::RIGHT);
+    /// let vertex_offset = Vertex::from_parts::<Sc>(0, 8.0, Endpoint::RIGHT);
     ///
     /// assert_eq!(vertex_on_bound.index(), -1);
     /// assert_eq!(vertex_offset.index(), 0);
@@ -121,10 +116,9 @@ impl<A> Vertex<A> {
     pub fn from_parts<Sc: Scale>(
         index: i32,
         offset: impl Into<VertexOffset>,
-        end: Endpoint,
+        end: Endpoint<A>,
     ) -> Vertex<A> {
         let mut vert = Vertex {
-            axis: PhantomData,
             end,
             index,
             offset: offset.into(),
@@ -142,18 +136,17 @@ impl<A> Vertex<A> {
     /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
-    /// let bound_left = Vertex::<AxisX>::from_bound::<Sc>(0, Endpoint::Upper);
-    /// let bound_right = Vertex::<AxisX>::from_bound::<Sc>(1, Endpoint::Lower);
+    /// let bound_left = Vertex::from_bound::<Sc>(0, Endpoint::RIGHT);
+    /// let bound_right = Vertex::from_bound::<Sc>(1, Endpoint::LEFT);
     ///
     /// assert_eq!(bound_left.index(), 0);
     /// assert_eq!(bound_right.index(), 1);
     /// ```
-    pub fn from_bound<Sc: Scale>(index: i32, end: Endpoint) -> Self {
+    pub fn from_bound<Sc: Scale>(index: i32, end: Endpoint<A>) -> Self {
         Vertex {
-            axis: PhantomData,
             end,
             index,
-            offset: VertexOffset::from_bound::<Sc>(end),
+            offset: VertexOffset::from_bound::<_, Sc>(end),
         }
     }
 
@@ -162,7 +155,7 @@ impl<A> Vertex<A> {
     /// bound.
     #[inline]
     fn align_to_bound<Sc: Scale>(&mut self) {
-        if let Some(f) = self.offset.align_to_bound::<Sc>(self.end) {
+        if let Some(f) = self.offset.align_to_bound::<_, Sc>(self.end) {
             f(&mut self.index)
         }
     }
@@ -175,7 +168,7 @@ impl<A> Vertex<A> {
 
     /// Get the vertex [`Endpoint`].
     #[inline]
-    pub const fn endpoint(&self) -> Endpoint {
+    pub const fn endpoint(&self) -> Endpoint<A> {
         self.end
     }
 
@@ -201,9 +194,9 @@ impl<A> Vertex<A> {
     /// indicating the distance to the next tile bound, regardless of `Endpoint`.
     #[inline]
     pub fn offset_normalized<Sc: Scale>(&self) -> VertexOffset {
-        match self.end {
-            Endpoint::LOW => self.offset.reversed::<Sc>(),
-            Endpoint::UPP => self.offset,
+        match *self.end {
+            EndpointBound::Lower => self.offset.reversed::<Sc>(),
+            EndpointBound::Upper => self.offset,
         }
     }
 
@@ -225,7 +218,7 @@ impl<A> Vertex<A> {
         if self.offset.is_on_bound::<Sc>() {
             self.incr_index();
         } else {
-            self.set_offset_unchecked(VertexOffset::from_bound::<Sc>(self.end));
+            self.set_offset_unchecked(VertexOffset::from_bound::<_, Sc>(self.end));
         }
     }
 
@@ -237,24 +230,18 @@ impl<A> Vertex<A> {
             self.decr_index();
         } else {
             self.decr_index();
-            self.set_offset_unchecked(VertexOffset::from_bound::<Sc>(self.end));
+            self.set_offset_unchecked(VertexOffset::from_bound::<_, Sc>(self.end));
         }
     }
 
     /// Increment the index toward the inner `Endpoint`.
-    pub const fn incr_index(&mut self) {
-        match self.end {
-            Endpoint::LOW => self.index -= 1,
-            Endpoint::UPP => self.index += 1,
-        }
+    pub fn incr_index(&mut self) {
+        self.index = self.end.incr(self.index);
     }
 
     /// Decrement the index away from the inner `Endpoint`.
-    pub const fn decr_index(&mut self) {
-        match self.end {
-            Endpoint::LOW => self.index += 1,
-            Endpoint::UPP => self.index -= 1,
-        }
+    pub fn decr_index(&mut self) {
+        self.index = self.end.decr(self.index);
     }
 
     /// Get the adjacent `Vertex`. See also [`Edge`].
@@ -265,7 +252,7 @@ impl<A> Vertex<A> {
     }
 
     /// Get the `Vertex` with the given [`Endpoint`]. See also [`Edge`].
-    pub fn into_endpoint<Sc: Scale>(self, end: Endpoint, edge_len: f32) -> Self {
+    pub fn into_endpoint<Sc: Scale>(self, end: Endpoint<A>, edge_len: f32) -> Self {
         if end == self.endpoint() {
             self
         } else {
@@ -299,10 +286,10 @@ impl<A> Vertex<A> {
 
     /// Set the offset from the given value, relative to the given endpoint.
     #[inline]
-    pub fn set_endpoint_offset<Sc: Scale>(&mut self, mut offset: f32, end: Endpoint) {
-        offset = match end {
-            Endpoint::LOW => Sc::SCALE - offset,
-            Endpoint::UPP => offset,
+    pub fn set_endpoint_offset<Sc: Scale>(&mut self, mut offset: f32, end: Endpoint<A>) {
+        offset = match *end {
+            EndpointBound::Lower => Sc::SCALE - offset,
+            EndpointBound::Upper => offset,
         };
         self.set_offset::<Sc>(offset);
     }
@@ -316,8 +303,8 @@ impl<A> Vertex<A> {
     /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
-    /// let mut vertex_on_bound = Vertex::<AxisX>::from_parts::<Sc>(0, 0.0, Endpoint::Upper);
-    /// let mut vertex_offset = Vertex::<AxisX>::from_parts::<Sc>(0, 8.0, Endpoint::Upper);
+    /// let mut vertex_on_bound = Vertex::from_parts::<Sc>(0, 0.0, Endpoint::RIGHT);
+    /// let mut vertex_offset = Vertex::from_parts::<Sc>(0, 8.0, Endpoint::RIGHT);
     /// assert_eq!(vertex_on_bound.index(), -1);
     /// assert_eq!(vertex_offset.index(), 0);
     ///
@@ -344,8 +331,7 @@ impl<A> Vertex<A> {
     /// Cast the `Edge` axis marker to another type.
     pub const fn cast<B>(self) -> Vertex<B> {
         Vertex {
-            axis: PhantomData,
-            end: self.end,
+            end: self.end.cast(),
             index: self.index,
             offset: self.offset,
         }
@@ -364,8 +350,8 @@ impl<A: Axis> Vertex<A> {
     /// # use tilebound::topology::vertex::Vertex;
     /// type Sc = ConSc<16>;
     ///
-    /// let vert = Vertex::<AxisX>::from_pos::<Sc>(4.0, Endpoint::Lower);
-    /// let t_vert = vert.transpose::<Sc>(0, Endpoint::Lower);
+    /// let vert = Vertex::from_pos::<Sc>(4.0, Endpoint::LEFT);
+    /// let t_vert = vert.transpose::<Sc>(0, Endpoint::TOP);
     ///
     ///
     /// // Returns values of an equal disatance to the next tile bound.
@@ -373,11 +359,10 @@ impl<A: Axis> Vertex<A> {
     /// assert_eq!(t_vert.offset_value(), 12.0);
     /// assert_eq!(vert.offset().reversed::<Sc>(), t_vert.offset());
     /// ```
-    pub fn transpose<Sc: Scale>(mut self, t_index: i32, t_end: Endpoint) -> Vertex<A::T> {
-        self.offset.transpose::<Sc>(self.end, t_end);
+    pub fn transpose<Sc: Scale>(mut self, t_index: i32, t_end: Endpoint<A::T>) -> Vertex<A::T> {
+        self.offset.transpose::<_, Sc>(self.end, t_end);
 
         let mut vertex = Vertex {
-            axis: PhantomData,
             end: t_end,
             index: t_index,
             offset: self.offset,
@@ -428,32 +413,35 @@ impl VertexOffset {
     }
 
     /// Create a new `VertexOffset` with a value aligned to the given [`Endpoint`] bound.
-    pub fn new_oriented<Sc: Scale>(offset: f32, end: Endpoint) -> VertexOffset {
+    pub fn new_oriented<A, Sc: Scale>(offset: f32, end: Endpoint<A>) -> VertexOffset {
         debug_assert!(offset < Sc::SCALE);
 
-        match end {
-            Endpoint::LOW => VertexOffset(offset),
-            Endpoint::UPP => VertexOffset(Sc::SCALE - offset),
+        match *end {
+            EndpointBound::Lower => VertexOffset(offset),
+            EndpointBound::Upper => VertexOffset(Sc::SCALE - offset),
         }
     }
 
     /// Create a new `VertexOffset` from an endpoint bound.
-    pub fn from_bound<Sc: Scale>(end: Endpoint) -> VertexOffset {
-        match end {
-            Endpoint::LOW => VertexOffset(0.0),
-            Endpoint::UPP => VertexOffset(Sc::SCALE),
+    pub fn from_bound<A, Sc: Scale>(end: Endpoint<A>) -> VertexOffset {
+        match *end {
+            EndpointBound::Lower => VertexOffset(0.0),
+            EndpointBound::Upper => VertexOffset(Sc::SCALE),
         }
     }
 
     /// Align the `VertexOffset`, ensuring a bound value is equal to the given [`Endpoint`]. Returns
     /// a `fn` for aligning an index. See [`VertexOffset`] documentation for more on bound alignment.
-    pub(crate) fn align_to_bound<Sc: Scale>(&mut self, end: Endpoint) -> Option<fn(&mut i32)> {
-        match (end, self.0) {
-            (Endpoint::UPP, 0.0) => {
+    pub(crate) fn align_to_bound<A, Sc: Scale>(
+        &mut self,
+        end: Endpoint<A>,
+    ) -> Option<fn(&mut i32)> {
+        match (*end, self.0) {
+            (EndpointBound::Upper, 0.0) => {
                 self.0 = Sc::SCALE;
                 Some(|i| *i -= 1)
             }
-            (Endpoint::LOW, offset) if offset == Sc::SCALE => {
+            (EndpointBound::Lower, offset) if offset == Sc::SCALE => {
                 self.0 = 0.0;
                 Some(|i| *i += 1)
             }
@@ -474,8 +462,12 @@ impl VertexOffset {
 
     /// Transposes the `VertexOffset` value from `end_a` of the current axis to `end_b` of the
     /// transpose axis.
-    pub(crate) fn transpose<Sc: Scale>(&mut self, end_a: Endpoint, end_b: Endpoint) {
-        match end_a.const_eq(end_b as u8) {
+    pub(crate) fn transpose<A: Axis, Sc: Scale>(
+        &mut self,
+        end_a: Endpoint<A>,
+        end_b: Endpoint<A::T>,
+    ) {
+        match *end_a == *end_b {
             true => self.0 = Sc::SCALE - self.0,
             false => {}
         }
@@ -514,24 +506,24 @@ mod tests {
 
         #[test]
         fn incr_index() {
-            let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOW);
+            let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOWER);
             vert_neg.incr_index();
-            let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPP);
+            let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPPER);
             vert_pos.incr_index();
 
-            assert_eq!(vert_neg, Vertex::from_pos::<Sc>(-8.0, Endpoint::LOW));
-            assert_eq!(vert_pos, Vertex::from_pos::<Sc>(24.0, Endpoint::UPP));
+            assert_eq!(vert_neg, Vertex::from_pos::<Sc>(-8.0, Endpoint::LOWER));
+            assert_eq!(vert_pos, Vertex::from_pos::<Sc>(24.0, Endpoint::UPPER));
         }
 
         #[test]
         fn decr_index() {
-            let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOW);
+            let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOWER);
             vert_neg.decr_index();
-            let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPP);
+            let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPPER);
             vert_pos.decr_index();
 
-            assert_eq!(vert_neg, Vertex::from_pos::<Sc>(24.0, Endpoint::LOW));
-            assert_eq!(vert_pos, Vertex::from_pos::<Sc>(-8.0, Endpoint::UPP));
+            assert_eq!(vert_neg, Vertex::from_pos::<Sc>(24.0, Endpoint::LOWER));
+            assert_eq!(vert_pos, Vertex::from_pos::<Sc>(-8.0, Endpoint::UPPER));
         }
 
         mod incr_bound {
@@ -540,24 +532,24 @@ mod tests {
 
             #[test]
             fn incr_from_offset() {
-                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOW);
+                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOWER);
                 vert_neg.incr_bound::<Sc>();
-                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPP);
+                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPPER);
                 vert_pos.incr_bound::<Sc>();
 
-                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(0.0, Endpoint::LOW));
-                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(16.0, Endpoint::UPP));
+                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(0.0, Endpoint::LOWER));
+                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(16.0, Endpoint::UPPER));
             }
 
             #[test]
             fn incr_from_bound() {
-                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
                 vert_neg.incr_bound::<Sc>();
-                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::UPP);
+                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::UPPER);
                 vert_pos.incr_bound::<Sc>();
 
-                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(-16.0, Endpoint::LOW));
-                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(16.0, Endpoint::UPP));
+                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(-16.0, Endpoint::LOWER));
+                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(16.0, Endpoint::UPPER));
             }
         }
 
@@ -567,24 +559,24 @@ mod tests {
 
             #[test]
             fn decr_from_offset() {
-                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOW);
+                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::LOWER);
                 vert_neg.decr_bound::<Sc>();
-                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPP);
+                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(8.0, Endpoint::UPPER);
                 vert_pos.decr_bound::<Sc>();
 
-                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(16.0, Endpoint::LOW));
-                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(0.0, Endpoint::UPP));
+                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(16.0, Endpoint::LOWER));
+                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(0.0, Endpoint::UPPER));
             }
 
             #[test]
             fn decr_from_bound() {
-                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+                let mut vert_neg = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
                 vert_neg.decr_bound::<Sc>();
-                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::UPP);
+                let mut vert_pos = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::UPPER);
                 vert_pos.decr_bound::<Sc>();
 
-                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(16.0, Endpoint::LOW));
-                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(-16.0, Endpoint::UPP));
+                assert_eq!(vert_neg, Vertex::from_pos::<Sc>(16.0, Endpoint::LOWER));
+                assert_eq!(vert_pos, Vertex::from_pos::<Sc>(-16.0, Endpoint::UPPER));
             }
         }
     }

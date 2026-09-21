@@ -1,30 +1,35 @@
-use std::ops::Add;
+use std::{marker::PhantomData, ops::Add};
 
-use crate::plane::endpoint::Endpoint;
+use crate::plane::endpoint::{Endpoint, EndpointBound};
 
 /// # EndpointPair
 ///
 /// `EndpointPair` are two variables associated with two opposing [`Endpoint`]s. See also
 /// [`EndpointRange`](super::EndpointRange).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct EndpointPair<T> {
+pub struct EndpointPair<A, T> {
+    pub axis: PhantomData<A>,
     pub lower: T,
     pub upper: T,
 }
 
-impl<T> EndpointPair<T> {
+impl<A, T> EndpointPair<A, T> {
     /// Create `EndpointPair` from the given `lower` and `upper` variables.
     #[inline]
     pub fn new(lower: T, upper: T) -> Self {
-        Self { lower, upper }
+        Self {
+            axis: PhantomData,
+            lower,
+            upper,
+        }
     }
 
     /// Create a new `EndpointPair` with element *i* and *j* passed to the given `endpoint` and its
     /// inverse respectively.
-    pub fn new_mapped(a: T, b: T, end: Endpoint) -> Self {
-        match end {
-            Endpoint::LOW => EndpointPair::new(a, b),
-            Endpoint::UPP => EndpointPair::new(b, a),
+    pub fn new_mapped(a: T, b: T, end: Endpoint<A>) -> Self {
+        match *end {
+            EndpointBound::Lower => EndpointPair::<A, T>::new(a, b),
+            EndpointBound::Upper => EndpointPair::<A, T>::new(b, a),
         }
     }
 
@@ -45,35 +50,35 @@ impl<T> EndpointPair<T> {
     }
 
     /// Get the value assigned to the given `end`.
-    pub const fn get(&self, end: Endpoint) -> T
+    pub fn get(&self, end: Endpoint<A>) -> T
     where
         T: Copy,
     {
-        match end {
-            Endpoint::LOW => self.lower,
-            Endpoint::UPP => self.upper,
+        match *end {
+            EndpointBound::Lower => self.lower,
+            EndpointBound::Upper => self.upper,
         }
     }
 
     /// Get a reference to the value assigned to the given `end`.
-    pub const fn get_ref(&self, end: Endpoint) -> &T {
-        match end {
-            Endpoint::LOW => &self.lower,
-            Endpoint::UPP => &self.upper,
+    pub fn get_ref(&self, end: Endpoint<A>) -> &T {
+        match *end {
+            EndpointBound::Lower => &self.lower,
+            EndpointBound::Upper => &self.upper,
         }
     }
 
     /// Get a mutable reference to the value assigned to the given `end`.
-    pub const fn get_mut(&mut self, end: Endpoint) -> &mut T {
-        match end {
-            Endpoint::LOW => &mut self.lower,
-            Endpoint::UPP => &mut self.upper,
+    pub fn get_mut(&mut self, end: Endpoint<A>) -> &mut T {
+        match *end {
+            EndpointBound::Lower => &mut self.lower,
+            EndpointBound::Upper => &mut self.upper,
         }
     }
 
     /// Return an `EndpointPair` with the result of the function `F` applied to each
     /// element.
-    pub fn map<F: FnMut(T) -> U, U>(self, mut f: F) -> EndpointPair<U> {
+    pub fn map<F: FnMut(T) -> U, U>(self, mut f: F) -> EndpointPair<A, U> {
         EndpointPair::new(f(self.lower), f(self.upper))
     }
 
@@ -90,19 +95,27 @@ impl<T> EndpointPair<T> {
     }
 }
 
-impl<T> From<(T, T)> for EndpointPair<T> {
+impl<A, T> From<(T, T)> for EndpointPair<A, T> {
     fn from((lower, upper): (T, T)) -> Self {
-        EndpointPair { lower, upper }
+        EndpointPair {
+            axis: PhantomData,
+            lower,
+            upper,
+        }
     }
 }
 
-impl<T> From<[T; 2]> for EndpointPair<T> {
+impl<A, T> From<[T; 2]> for EndpointPair<A, T> {
     fn from([lower, upper]: [T; 2]) -> Self {
-        EndpointPair { lower, upper }
+        EndpointPair {
+            axis: PhantomData,
+            lower,
+            upper,
+        }
     }
 }
 
-impl<T: Copy + Add<T, Output = T>> EndpointPair<T> {
+impl<A, T: Copy + Add<T, Output = T>> EndpointPair<A, T> {
     /// Return the sum of the lower and upper variables.
     pub fn sum(&self) -> T {
         self.lower + self.upper

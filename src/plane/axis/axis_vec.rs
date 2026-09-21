@@ -141,7 +141,7 @@ impl<T> AxisVec<T> {
 impl<T> AxisVec<T> {
     /// Create a new `AxisVec` with element *i* and *j* passed to the given `const` axis `A` and
     /// its transpose respectively.
-    pub fn new_mapped<A: Axis>(i: T, j: T) -> Self {
+    pub const fn new_mapped<A: Axis>(i: T, j: T) -> Self {
         match A::VALUE {
             AxisX::VALUE => AxisVec::new(i, j),
             AxisY::VALUE => AxisVec::new(j, i),
