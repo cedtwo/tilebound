@@ -188,7 +188,7 @@ impl<R> State<R> {
 
     /// Get the [`Vertex`] tile index for the given `end` of axis `A`.
     pub fn index<A: Axis, Sc: Scale>(&self, end: Endpoint<A>) -> i32 {
-        dbg!(self.vertex::<A, Sc>(end)).index()
+        self.vertex::<A, Sc>(end).index()
     }
 
     /// Get the last [`Vertex`] tile index for the given `end` of axis `A`.
