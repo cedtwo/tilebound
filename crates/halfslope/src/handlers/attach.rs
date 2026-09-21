@@ -1,9 +1,9 @@
 use std::ops::{ControlFlow, Range};
 
+use tilebound::ctx::scene::Scene;
 use tilebound::plane::axis::Axis;
 use tilebound::plane::endpoint::Endpoint;
 use tilebound::plane::scale::Scale;
-use tilebound::schema::scene::Scene;
 use tilebound::topology::vertex::Vertex;
 use tilebound::view::tilemap::TileMapView;
 
@@ -39,11 +39,11 @@ where
 
         if adj_tris.all_on_axis::<A::T>() {
             // Attach to vertex/vertices.
-            if t_edge.is_on_bound::<Sc>(Endpoint::LOW) {
+            if t_edge.is_on_bound::<Sc>(Endpoint::LOWER) {
                 // Attached to either the negative, or both wedge vertices.
                 state.attach::<A>(tgt.endpoint());
                 Collision::TileBound(insp).into()
-            } else if t_edge.is_on_bound::<Sc>(Endpoint::UPP) {
+            } else if t_edge.is_on_bound::<Sc>(Endpoint::UPPER) {
                 // Attached to either the positive, or both wedge vertices.
                 state.attach::<A>(tgt.endpoint());
                 Collision::TileBound(insp).into()
@@ -52,7 +52,7 @@ where
                 state.set_tris::<A>(tgt.endpoint(), insp.trimask());
                 Self::handle_wedge(tgt, t_wedge_range, state, scene)
             }
-        } else if let Some(t_sign) = adj_tris.any_first_end() {
+        } else if let Some(t_sign) = adj_tris.first_end::<A::T>() {
             if t_edge.is_on_bound::<Sc>(t_sign) {
                 // Attached to a single triangle vertex.
                 state.attach::<A>(tgt.endpoint());
@@ -69,7 +69,7 @@ where
 
     fn handle_tri(
         tgt: Vertex<A>,
-        t_end: Endpoint,
+        t_end: Endpoint<A::T>,
         state: &mut State,
         _scene: &Scene<Sc, Map>,
     ) -> ControlFlow<Collision<A::T>> {
@@ -140,7 +140,7 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "arraymap"))]
 mod tests {
 
     use bitvec::prelude::*;
@@ -169,8 +169,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 2.0).into());
@@ -189,8 +189,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 2.0).into());
@@ -214,8 +214,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 0.0).into());
@@ -223,8 +223,12 @@ mod tests {
             assert_eq!(*state.res(), VertexMask::NONE.into());
             assert_eq!(
                 r,
-                Collision::TileBound(EdgeRange::from_array((0, 0), Endpoint::UPP, bitvec![1, 0]))
-                    .into()
+                Collision::TileBound(EdgeRange::from_array(
+                    (0, 0),
+                    Endpoint::UPPER,
+                    bitvec![1, 0]
+                ))
+                .into()
             )
         }
 
@@ -238,8 +242,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (14.0, 2.0).into());
@@ -258,8 +262,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 0.0).into());
@@ -269,7 +273,7 @@ mod tests {
                 r,
                 Collision::TileBound(EdgeRange::from_array(
                     (0, 0),
-                    Endpoint::UPP,
+                    Endpoint::UPPER,
                     bitvec![1, 0, 0, 0, 0, 1]
                 ),)
                 .into()
@@ -286,8 +290,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 1.0).into());
@@ -297,7 +301,7 @@ mod tests {
                 r,
                 Collision::TileBound(EdgeRange::from_array(
                     (0, 0),
-                    Endpoint::UPP,
+                    Endpoint::UPPER,
                     bitvec![1, 0, 0, 0, 0, 1]
                 ))
                 .into()
@@ -314,8 +318,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 0.0).into());
@@ -325,7 +329,7 @@ mod tests {
                 r,
                 Collision::TileBound(EdgeRange::from_array(
                     (0, 0),
-                    Endpoint::UPP,
+                    Endpoint::UPPER,
                     bitvec![1, 0, 0, 0, 0, 1]
                 ))
                 .into()
@@ -342,8 +346,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (12.0, 4.0).into());
@@ -362,8 +366,8 @@ mod tests {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let r = Attach::to_next_tile(tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (12.0, 12.0).into());

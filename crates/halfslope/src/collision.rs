@@ -5,7 +5,7 @@ use std::ops::{ControlFlow, Range};
 
 use bitvec::prelude::*;
 use tilebound::plane::axis::{Axis, AxisVec};
-use tilebound::plane::endpoint::{Endpoint, EndpointPair};
+use tilebound::plane::endpoint::{Endpoint, EndpointBound, EndpointPair};
 use tilebound::view::index::SliceIndex;
 use tilebound::view::inspect::TileMapInspect;
 use tilebound::view::tilemap::TileMapView;
@@ -17,7 +17,7 @@ use crate::vertex_mask::VertexMask;
 ///
 /// Collision data and context for displacement.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Collision<A> {
+pub enum Collision<A: Axis> {
     /// Collided with a tile bound. Returns an [`EdgeRange`] on the **transpose** axis of displacement.
     TileBound(EdgeRange<A>),
     /// Collided with a map bound.
@@ -30,7 +30,7 @@ pub enum Collision<A> {
     WedgeApex,
 }
 
-impl<A> From<Collision<A>> for ControlFlow<Collision<A>> {
+impl<A: Axis> From<Collision<A>> for ControlFlow<Collision<A>> {
     fn from(c: Collision<A>) -> Self {
         ControlFlow::Break(c)
     }
@@ -43,15 +43,15 @@ impl<A> From<Collision<A>> for ControlFlow<Collision<A>> {
 /// `EdgeRange` is an aggregate of adjacent tile vertices for one endpoint of a tile slice. It
 /// notably exposes methods for iteration over edges.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EdgeRange<A> {
+pub struct EdgeRange<A: Axis> {
     /// The edge range axis.
     pub axis: PhantomData<A>,
     /// The index of the first tile.
     pub start_idx: AxisVec<i32>,
     /// An [`AxisMask`] indicating if part of the inspected slice was out-of-bounds.
-    pub padding: EndpointPair<i32>,
+    pub padding: EndpointPair<A, i32>,
     /// The tile bound [`Endpoint`] on the transpose axis.
-    pub t_end: Endpoint,
+    pub t_end: Endpoint<A::T>,
     /// The backing [`BitVec`]. Stores each vertex as a two bit pair.
     pub(crate) array: BitVec,
 }
@@ -68,10 +68,10 @@ impl<A: Axis> EdgeRange<A> {
     /// EdgeRange::<AxisY>::new(
     ///     0,                // The column index.
     ///     1..5,             // The range of elements.
-    ///     Endpoint::Lower,  // The lefthand side of the column.
+    ///     Endpoint::LEFT,   // Aggregate vertices on the left.
     /// );
     /// ```
-    pub fn new(t_index: i32, range: Range<i32>, t_end: Endpoint) -> Self {
+    pub fn new(t_index: i32, range: Range<i32>, t_end: Endpoint<A::T>) -> Self {
         debug_assert!(t_index >= 0);
         debug_assert!(range.start >= 0);
         Self {
@@ -85,7 +85,11 @@ impl<A: Axis> EdgeRange<A> {
 
     /// Create a new `EdgeRange` from a starting index, the transpose endpoint to aggregate
     /// verteices, and a [`BitVec`] array.
-    pub fn from_array(index: impl Into<AxisVec<i32>>, t_end: Endpoint, array: BitVec) -> Self {
+    pub fn from_array(
+        index: impl Into<AxisVec<i32>>,
+        t_end: Endpoint<A::T>,
+        array: BitVec,
+    ) -> Self {
         Self {
             axis: PhantomData,
             t_end,
@@ -107,7 +111,7 @@ impl<A: Axis> EdgeRange<A> {
     }
 
     /// Return the vertex [`Endpoint`] for elements in the array.
-    pub fn end(&self) -> Endpoint {
+    pub fn end(&self) -> Endpoint<A::T> {
         self.t_end
     }
 
@@ -131,13 +135,9 @@ impl<A: Axis> EdgeRange<A> {
             self.array.starts_with(bits![static usize, Lsb0; 1, 0]),
             self.array.ends_with(bits![static usize, Lsb0; 0, 1]),
         ) {
-            (true, true) => VertexMask::from_axis::<A::T>(!self.t_end),
-            (true, false) => {
-                VertexMask::from_vertex(AxisVec::new_mapped::<A::T>(!self.t_end, Endpoint::Lower))
-            }
-            (false, true) => {
-                VertexMask::from_vertex(AxisVec::new_mapped::<A::T>(!self.t_end, Endpoint::Upper))
-            }
+            (true, true) => VertexMask::from_axis(!self.t_end),
+            (true, false) => VertexMask::from_vertex(!self.t_end, Endpoint::LOWER),
+            (false, true) => VertexMask::from_vertex(!self.t_end, Endpoint::UPPER),
             (false, false) => VertexMask::NONE,
         }
         .into()
@@ -163,17 +163,17 @@ impl<A: Axis> EdgeRange<A> {
         }
     }
 
-    /// Returns `true` if there is any vertex is set outside of a terminating triangle tile vertex
+    /// Returns `true` if there any vertex is set outside of a terminating triangle tile vertex
     /// after removing `n` **tiles** from the given [`Endpoint`].
-    pub(crate) fn truncated_inner_collision(&self, end: Endpoint, n: usize) -> bool {
+    pub(crate) fn truncated_inner_collision(&self, end: Endpoint<A>, n: usize) -> bool {
         let len = self.array.len();
         let n = n * 2;
         if len <= n + 2 {
             false
         } else {
-            match end {
-                Endpoint::LOW => self.array[n + 1..len - 1].any(),
-                Endpoint::UPP => self.array[1..self.len() - (n + 1)].any(),
+            match *end {
+                EndpointBound::Lower => self.array[n + 1..len - 1].any(),
+                EndpointBound::Upper => self.array[1..self.len() - (n + 1)].any(),
             }
         }
     }
@@ -220,31 +220,31 @@ impl<A: Axis> EdgeRange<A> {
 #[cfg(debug_assertions)]
 impl<A: Axis> EdgeRange<A> {
     /// Return the `EdgeRange` with the given `padding` field set.
-    pub(crate) fn with_padding(mut self, padding: EndpointPair<i32>) -> Self {
+    pub(crate) fn with_padding(mut self, padding: EndpointPair<A, i32>) -> Self {
         self.padding = padding;
         self
     }
 
-    /// Create a new `EdgeRange` from a slice index, a range and the transpose endpoint to aggregate
-    /// vertices. Sets the vertex extreme for the given axis `A` endpoint.
+    /// Create a new `EdgeRange` from a slice index, a range and the transpose endpoint. Sets the
+    /// vertex on the given `end` extreme.
     pub fn extreme(
         t_index: i32,
         range: Range<i32>,
-        vertex_pos: impl Into<AxisVec<Endpoint>>,
+        end: Endpoint<A>,
+        t_end: Endpoint<A::T>,
     ) -> Self {
-        let ends = vertex_pos.into();
-        let mut edges = Self::new(t_index, range, ends.get::<A::T>());
+        let mut edges = Self::new(t_index, range, t_end);
 
-        match ends.get::<A>() {
-            Endpoint::LOW => edges.set_lower_vertex(),
-            Endpoint::UPP => edges.set_upper_vertex(),
+        match *end {
+            EndpointBound::Lower => edges.set_lower_vertex(),
+            EndpointBound::Upper => edges.set_upper_vertex(),
         }
         edges
     }
 
     /// Create a new `EdgeRange` from a slice index, a range and the transpose endpoint to aggregate
     /// vertices. Sets both vertex extremes on axis `A`.
-    pub fn extremes(t_index: i32, range: Range<i32>, t_end: Endpoint) -> Self {
+    pub fn extremes(t_index: i32, range: Range<i32>, t_end: Endpoint<A::T>) -> Self {
         let mut edges = Self::new(t_index, range, t_end);
 
         edges.set_lower_vertex();
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn sets_single_vertex() {
-        let index = SliceIndex::<AxisY>::new_unchecked(1, 0..1, 1, Endpoint::UPP);
+        let index = SliceIndex::<AxisY>::new_unchecked(1, 0..1, 1, Endpoint::UPPER);
         let edges = EdgeRange::inspect(&TRI, &index);
 
         assert_eq!(edges.array, bits![1, 0]);
@@ -314,7 +314,7 @@ mod tests {
 
     #[test]
     fn set_edge_vertices() {
-        let index = SliceIndex::<AxisY>::new_unchecked(1, 0..1, 1, Endpoint::LOW);
+        let index = SliceIndex::<AxisY>::new_unchecked(1, 0..1, 1, Endpoint::LOWER);
         let edges = EdgeRange::inspect(&TRI, &index);
 
         assert_eq!(edges.array, bits![1, 1]);
@@ -322,7 +322,7 @@ mod tests {
 
     #[test]
     fn lower_padding_is_cropped() {
-        let index = SliceIndex::<AxisY>::new_unchecked(1, -1..1, 1, Endpoint::LOW);
+        let index = SliceIndex::<AxisY>::new_unchecked(1, -1..1, 1, Endpoint::LOWER);
         let edges = EdgeRange::inspect(&TRI, &index);
 
         assert_eq!(edges.array, bits![1, 1]);
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn upper_padding_is_cropped() {
-        let index = SliceIndex::<AxisY>::new_unchecked(1, 0..2, 1, Endpoint::UPP);
+        let index = SliceIndex::<AxisY>::new_unchecked(1, 0..2, 1, Endpoint::UPPER);
         let edges = EdgeRange::inspect(&TRI, &index);
 
         assert_eq!(edges.array, bits![1, 0]);
@@ -340,9 +340,9 @@ mod tests {
 
     #[test]
     fn iter_in_bounds_col() {
-        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 4, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 4, Endpoint::Upper);
-        let idx_2 = SliceIndex::<AxisY>::new_unchecked(1, 1..10, 4, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 4, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 4, Endpoint::UPPER);
+        let idx_2 = SliceIndex::<AxisY>::new_unchecked(1, 1..10, 4, Endpoint::LOWER);
 
         let c0 = EdgeRange::inspect(&COLUMNS, &idx_0);
         let c0 = c0.iter_in_bounds().collect::<Vec<_>>();
@@ -381,9 +381,9 @@ mod tests {
 
     #[test]
     fn iter_in_bounds_row() {
-        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 2, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 2, Endpoint::Upper);
-        let idx_2 = SliceIndex::<AxisX>::new_unchecked(3, 1..2, 2, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 2, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 2, Endpoint::UPPER);
+        let idx_2 = SliceIndex::<AxisX>::new_unchecked(3, 1..2, 2, Endpoint::LOWER);
 
         let r0 = EdgeRange::inspect(&COLUMNS, &idx_0);
         let r0 = r0.iter_in_bounds().collect::<Vec<_>>();

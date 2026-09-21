@@ -4,11 +4,10 @@ use crate::collision::{Collision, EdgeRange};
 use crate::handlers::{Attach, Slide, VertexHandler};
 use crate::prelude::State;
 use crate::tile::VertexTile;
+use tilebound::ctx::brk::Break;
+use tilebound::ctx::state::DetachOp;
 use tilebound::ops::*;
-use tilebound::plane::axis::AxisVec;
 use tilebound::prelude::*;
-use tilebound::schema::brk::Break;
-use tilebound::schema::state::DetachOp;
 use tilebound::topology::vertex::Vertex;
 
 /// # Context
@@ -171,7 +170,7 @@ impl<'a, Sc: Scale, Map: TileMap, H> ContextHandler<'a, Sc, Map, H> {
             // Do not check collisions on already intersected tiles.
             true => Self::to_intersected_tile(tgt, state, &scene),
             // Check the tilemap view for collisions, or handle displacing over the map bounds.
-            false => match inspect_intersected::<_, _, _, _, EdgeRange<A::T>>(tgt, state, scene) {
+            false => match scene.inspect_intersected::<_, _, EdgeRange<A::T>>(tgt, state) {
                 Ok(edges) => match edges.inner_collision() {
                     true => {
                         state.attach::<A>(tgt.endpoint());
@@ -196,12 +195,12 @@ impl<'a, Sc: Scale, Map: TileMap, H> ContextHandler<'a, Sc, Map, H> {
         debug_assert!(!state.lt_vertex_index::<A, Sc>(tgt));
         debug_assert!(state.lt_vertex_offset::<A, Sc>(tgt));
 
-        let adj_tris = state.res().isolate_edge::<A>(tgt.endpoint());
+        let adj_tris = state.res().isolate_edge(tgt.endpoint());
 
         if adj_tris.all_on_axis::<A::T>() {
             let t_range = state.index_range::<A::T, Sc>();
             H::handle_wedge(tgt, t_range, state, scene)
-        } else if let Some(t_vert_sign) = adj_tris.any_first_end() {
+        } else if let Some(t_vert_sign) = adj_tris.first_end::<A::T>() {
             H::handle_tri(tgt, t_vert_sign, state, scene)
         } else {
             state.set_vertex(tgt);
@@ -248,10 +247,7 @@ impl<'a, Sc: Scale, Map: TileMap, H> ContextHandler<'a, Sc, Map, H> {
             |state, t_end| {
                 let end = state.inbound_endpoint::<A>();
                 // Left triangle hypotenuse.
-                if state
-                    .res()
-                    .vertex_is_set(AxisVec::new_mapped::<A>(!end, t_end))
-                {
+                if state.res().vertex_is_set(!end, t_end) {
                     DetachOp::Detach
                     // On a tile bound and index changed on the transpose axis or possibly leaving
                     // a triangle vertex.
@@ -283,7 +279,7 @@ impl<'a, Sc: Scale, Map: TileMap, H> ContextHandler<'a, Sc, Map, H> {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "arraymap"))]
 mod tests {
     use bitvec::prelude::*;
 
@@ -327,7 +323,7 @@ mod tests {
             update,
             Some(EdgeRange::from_array(
                 (0, 1),
-                Endpoint::Lower,
+                Endpoint::LOWER,
                 bitvec![0, 0, 1, 1]
             ))
         );
@@ -366,7 +362,7 @@ mod tests {
             update,
             Some(EdgeRange::from_array(
                 (1, 1),
-                Endpoint::Lower,
+                Endpoint::LOWER,
                 bitvec![1, 1]
             ),)
         );
@@ -389,7 +385,7 @@ mod tests {
             update,
             Some(EdgeRange::from_array(
                 (0, 1),
-                Endpoint::Lower,
+                Endpoint::LOWER,
                 bitvec![0, 0, 0, 1]
             ))
         );
@@ -412,7 +408,7 @@ mod tests {
             update,
             Some(EdgeRange::from_array(
                 (1, 1),
-                Endpoint::Lower,
+                Endpoint::LOWER,
                 bitvec![0, 1]
             ))
         );
@@ -435,7 +431,7 @@ mod tests {
             update,
             Some(EdgeRange::from_array(
                 (1, 1),
-                Endpoint::Lower,
+                Endpoint::LOWER,
                 bitvec![0, 1]
             ))
         );

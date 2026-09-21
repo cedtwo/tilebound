@@ -1,4 +1,6 @@
 use macroquad::prelude::*;
+use tilebound::ops::*;
+use tilebound::plane::endpoint::EndpointBound;
 use tilebound_halfslope::prelude::*;
 
 type Sc = ConSc<32>;
@@ -59,26 +61,28 @@ async fn main() {
 
         // Return the attached (colliding) endpoint for the Y axis. Note that only one endpoint will
         // ever be set at a time.
-        match attmask.first_end::<AxisY>() {
-            // Colliding with the ceiling. See also `AxisMask::top`.
-            Some(Endpoint::Lower) => {
-                // Prevent upward velocity when colliding with the ceiling.
-                vel_y = f32::max(vel_y, 0.0);
-                vel_y += GRAV * get_frame_time();
-            }
-            // Colliding with the floor. See also `AxisMask::bottom`.
-            Some(Endpoint::Upper) => {
-                // Set velocity to zero or jump.
-                if is_key_pressed(KeyCode::Space) {
-                    vel_y = JUMP * get_frame_time();
-                } else {
-                    vel_y = 0.0
+        if let Some(end) = attmask.first_end::<AxisY>() {
+            // Colliding on one axis.
+            match *end {
+                // Colliding with the ceiling. See also `Endpoint::TOP`.
+                EndpointBound::Lower => {
+                    // Prevent upward velocity when colliding with the ceiling.
+                    vel_y = f32::max(vel_y, 0.0);
+                    vel_y += GRAV * get_frame_time();
+                }
+                // Colliding with the floor. See also `AxisMask::bottom`.
+                EndpointBound::Upper => {
+                    // Set velocity to zero or jump.
+                    if is_key_pressed(KeyCode::Space) {
+                        vel_y = JUMP * get_frame_time();
+                    } else {
+                        vel_y = 0.0
+                    }
                 }
             }
+        } else {
             // Falling.
-            None => {
-                vel_y += GRAV * get_frame_time();
-            }
+            vel_y += GRAV * get_frame_time();
         }
 
         let mut state = State::new::<Sc>(((x, y), (len_x, len_y), attmask, trimask));
@@ -135,10 +139,7 @@ fn draw_map(map: &VecMap<VertexPattern>) {
         WHITE,
     );
     map.vec.iter().enumerate().for_each(|(i, tile)| {
-        let tl = Vec2::new(
-            (i as i32 % map_size.y() as i32 * Sc::SCALE_INT) as f32,
-            (i as i32 / map_size.y() as i32 * Sc::SCALE_INT) as f32,
-        );
+        let tl: Vec2 = array_index_to_tile_pos::<Sc, _>(i, map).take().into();
         let tr = || tl + Vec2::new(Sc::SCALE, 0.0);
         let bl = || tl + Vec2::new(0.0, Sc::SCALE);
         let br = || tl + Vec2::new(Sc::SCALE, Sc::SCALE);
@@ -148,8 +149,7 @@ fn draw_map(map: &VecMap<VertexPattern>) {
             VertexPattern::Full => draw_rectangle(tl.x, tl.y, Sc::SCALE, Sc::SCALE, BROWN),
             VertexPattern::TopOneway => {
                 let tr = tr();
-                draw_line(tl.x, tl.y, tr.x, tr.y, 2.0, BROWN);
-                draw_triangle(tl, tr, tl + Vec2::new(Sc::SCALE / 2.0, 8.0), BROWN);
+                draw_line(tl.x, tl.y, tr.x, tr.y, 4.0, BROWN);
             }
             VertexPattern::LeftOneway => unreachable!(), // Not used in example.
             VertexPattern::BottomOneway => unreachable!(), // Not used in example.

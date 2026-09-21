@@ -1,9 +1,9 @@
 use std::ops::{ControlFlow, Range};
 
+use tilebound::ctx::scene::Scene;
 use tilebound::plane::axis::Axis;
 use tilebound::plane::endpoint::{Endpoint, EndpointRange};
 use tilebound::plane::scale::Scale;
-use tilebound::schema::scene::Scene;
 use tilebound::topology::vertex::Vertex;
 use tilebound::view::index::SliceIndex;
 use tilebound::view::inspect::TileMapInspect;
@@ -41,7 +41,7 @@ where
 
         if adj_tris.count_ones() == 2 {
             // Attach to wedge vertices.
-            if t_edge.is_on_bound::<Sc>(Endpoint::LOW) && t_edge.is_not_padded::<Sc>() {
+            if t_edge.is_on_bound::<Sc>(Endpoint::LOWER) && t_edge.is_not_padded::<Sc>() {
                 state.attach::<A>(tgt.endpoint());
                 Collision::TileBound(coll).into()
             } else {
@@ -50,7 +50,7 @@ where
                 Self::handle_wedge(tgt, t_wedge_len, state, scene)
                 // VertexHandler::<A, Slide>::handle_wedge(self, a, state, tgt, t_wedge_len)
             }
-        } else if let Some(t_sign) = adj_tris.any_first_end() {
+        } else if let Some(t_sign) = adj_tris.first_end::<A::T>() {
             state.set_tris::<A>(tgt.endpoint(), coll.trimask());
             Self::handle_tri(tgt, t_sign, state, scene)
             // VertexHandler::<A, Slide>::handle_tri(self, a, state, tgt, t_sign)
@@ -62,7 +62,7 @@ where
 
     fn handle_tri(
         tgt: Vertex<A>,
-        t_tri_end: Endpoint,
+        t_tri_end: Endpoint<A::T>,
         state: &mut State,
         scene: &Scene<Sc, Map>,
     ) -> ControlFlow<Collision<A::T>> {
@@ -213,7 +213,7 @@ where
 
         // Vertex exceeds the wedge limit.
         if tgt.endpoint().partial_gt(tgt, &lmt) {
-            let t_lmt = lmt.transpose::<Sc>(t_range.start, Endpoint::LOW);
+            let t_lmt = lmt.transpose::<Sc>(t_range.start, Endpoint::LOWER);
 
             state.attach::<A>(tgt.endpoint());
             state.set_vertex(lmt);
@@ -296,8 +296,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 1.0).into());
@@ -316,8 +316,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 1.0).into());
@@ -336,8 +336,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (1.0, 15.0).into());
@@ -361,8 +361,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&MAP, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(1.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (1.0, 15.0).into());
@@ -384,8 +384,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..2, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..2, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 2.0).into());
@@ -404,8 +404,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..2, Endpoint::UPP);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..2, Endpoint::UPPER);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(15.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 2.0).into());
@@ -424,8 +424,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..3, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..3, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (0.0, 16.0).into());
@@ -444,8 +444,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..2, Endpoint::UPP);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(10.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..2, Endpoint::UPPER);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(10.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (10.0, 6.0).into());
@@ -464,8 +464,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(10.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(10.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (10.0, 10.0).into());
@@ -495,8 +495,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&MAP, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 1.0).into());
@@ -521,8 +521,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&MAP, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 1.0).into());
@@ -547,8 +547,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&MAP, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..2, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..2, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 0.0).into());
@@ -567,8 +567,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::ALL);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..3, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..3, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (15.0, 1.0).into());
@@ -587,8 +587,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::ALL);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..3, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..3, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 0.0).into());
@@ -607,8 +607,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (16.0, 0.0).into());
@@ -618,7 +618,7 @@ mod test {
                 result,
                 Collision::TileBound(EdgeRange::from_array(
                     (0, 0),
-                    Endpoint::Upper,
+                    Endpoint::UPPER,
                     bitvec![1, 0, 0, 0, 0, 1]
                 ))
                 .into()
@@ -635,8 +635,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPP);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (8.0, 8.0).into());
@@ -661,8 +661,8 @@ mod test {
             ));
             let scene = Scene::<Sc, _>::new(&MAP, AxisMask::NONE);
 
-            let edges = EdgeRange::<AxisY>::extreme(0, 0..2, Endpoint::TOP_RIGHT);
-            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOW);
+            let edges = EdgeRange::<AxisY>::extreme(0, 0..2, Endpoint::TOP, Endpoint::RIGHT);
+            let vert_tgt = Vertex::<AxisX>::from_pos::<Sc>(0.0, Endpoint::LOWER);
             let result = Slide::to_next_tile(vert_tgt, edges, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (8.0, 8.0).into());

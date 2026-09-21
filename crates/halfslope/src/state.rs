@@ -11,32 +11,32 @@ use crate::vertex_mask::VertexMask;
 pub trait StateExt {
     /// Set the tris of a given axis and `end`. Expects a `VertexMask` of **only** the bits of the
     /// given ended axis set.
-    fn set_tris<A: Axis>(&mut self, end: Endpoint, mask: VertexMask);
+    fn set_tris<A: Axis>(&mut self, end: Endpoint<A>, mask: VertexMask);
 
     /// Clear the tris of the identified edge. See [`VertexMask::clear_edge`].
-    fn clear_tris<A: Axis>(&mut self, end: Endpoint);
+    fn clear_tris<A: Axis>(&mut self, end: Endpoint<A>);
 
     /// Returns an [`AxisMask`] retaining only the endpoints of the given edge. See
     /// [`VertexMask::isolate_edge`].
-    fn isolate_edge<A: Axis>(&mut self, end: Endpoint) -> AxisMask;
+    fn isolate_edge<A: Axis>(&mut self, end: Endpoint<A>) -> AxisMask;
 
     /// Attempt to clear `VertexMask` tris that are no longer intersected.
     fn clear_disjoint_tris<A: Axis, Sc: Scale>(&mut self);
 }
 
 impl StateExt for State {
-    fn set_tris<A: Axis>(&mut self, end: Endpoint, mask: VertexMask) {
+    fn set_tris<A: Axis>(&mut self, end: Endpoint<A>, mask: VertexMask) {
         debug_assert!(mask.isolate_edge::<A>(!end).none());
         let state_mask = self.res_mut();
         state_mask.clear_edge::<A>(end);
         *state_mask |= mask;
     }
 
-    fn clear_tris<A: Axis>(&mut self, end: Endpoint) {
+    fn clear_tris<A: Axis>(&mut self, end: Endpoint<A>) {
         self.res_mut().clear_edge::<A>(end);
     }
 
-    fn isolate_edge<A: Axis>(&mut self, end: Endpoint) -> AxisMask {
+    fn isolate_edge<A: Axis>(&mut self, end: Endpoint<A>) -> AxisMask {
         self.res_mut().isolate_edge::<A>(end)
     }
 

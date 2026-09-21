@@ -3,7 +3,7 @@ use std::ops::*;
 
 use marker_value::MarkerValue;
 use tilebound::plane::axis::{Axis, AxisMask, AxisVec, AxisX, AxisY};
-use tilebound::plane::endpoint::Endpoint;
+use tilebound::plane::endpoint::{Endpoint, EndpointBound};
 
 /// # VertexMask
 ///
@@ -56,17 +56,14 @@ impl VertexMask {
     }
 
     /// Create a `VertexMask` with the given `vertex_endpoint` set.
-    pub const fn from_vertex(vertex_endpoint: AxisVec<Endpoint>) -> Self {
-        const TOP_LEFT: AxisVec<Endpoint> = AxisVec::new(Endpoint::LOW, Endpoint::LOW);
-        const BOTTOM_LEFT: AxisVec<Endpoint> = AxisVec::new(Endpoint::LOW, Endpoint::UPP);
-        const TOP_RIGHT: AxisVec<Endpoint> = AxisVec::new(Endpoint::UPP, Endpoint::LOW);
-        const BOTTOM_RIGHT: AxisVec<Endpoint> = AxisVec::new(Endpoint::UPP, Endpoint::UPP);
+    pub fn from_vertex<A: Axis>(end: Endpoint<A>, t_end: Endpoint<A::T>) -> Self {
+        let vertex_ends = AxisVec::new_mapped::<A>(*end, *t_end);
 
-        match vertex_endpoint {
-            TOP_LEFT => VertexMask::TOP_LEFT_INCL,
-            BOTTOM_LEFT => VertexMask::BOTTOM_LEFT_INCL,
-            TOP_RIGHT => VertexMask::TOP_RIGHT_INCL,
-            BOTTOM_RIGHT => VertexMask::BOTTOM_RIGHT_INCL,
+        match vertex_ends {
+            EndpointBound::TOP_LEFT => VertexMask::TOP_LEFT_INCL,
+            EndpointBound::BOTTOM_LEFT => VertexMask::BOTTOM_LEFT_INCL,
+            EndpointBound::TOP_RIGHT => VertexMask::TOP_RIGHT_INCL,
+            EndpointBound::BOTTOM_RIGHT => VertexMask::BOTTOM_RIGHT_INCL,
         }
     }
 
@@ -76,13 +73,13 @@ impl VertexMask {
         VertexMask(0b0000_0001 << INDEX)
     }
 
-    /// Create a `VertexMask` with only the bits of the given `AXIS` and `Endpoint` set.
-    pub fn from_axis<A: Axis>(endpoint: Endpoint) -> VertexMask {
-        let bits = match (A::VALUE, endpoint) {
-            (AxisX::VALUE, Endpoint::LOW) => VertexMask::LEFT.0,
-            (AxisX::VALUE, Endpoint::UPP) => VertexMask::RIGHT.0,
-            (AxisY::VALUE, Endpoint::LOW) => VertexMask::TOP.0,
-            (AxisY::VALUE, Endpoint::UPP) => VertexMask::BOTTOM.0,
+    /// Create a `VertexMask` with only the bits of the given `Endpoint` set.
+    pub fn from_axis<A: Axis>(end: Endpoint<A>) -> VertexMask {
+        let bits = match (A::VALUE, *end) {
+            (AxisX::VALUE, EndpointBound::Lower) => VertexMask::LEFT.0,
+            (AxisX::VALUE, EndpointBound::Upper) => VertexMask::RIGHT.0,
+            (AxisY::VALUE, EndpointBound::Lower) => VertexMask::TOP.0,
+            (AxisY::VALUE, EndpointBound::Upper) => VertexMask::BOTTOM.0,
             _ => unreachable!(),
         };
 
@@ -112,22 +109,22 @@ impl VertexMask {
     }
 
     /// Returns `true` if the given `vertex_endpoint` is set.
-    pub const fn vertex_is_set(&self, vertex_endpoint: AxisVec<Endpoint>) -> bool {
-        (self.0 & VertexMask::from_vertex(vertex_endpoint).0) != 0
+    pub fn vertex_is_set<A: Axis>(&self, end: Endpoint<A>, t_end: Endpoint<A::T>) -> bool {
+        (self.0 & VertexMask::from_vertex(end, t_end).0) != 0
     }
 
     /// Returns `true` if only the given `vertex_endpoint` is set.
-    pub const fn vertex_is_set_excl(&self, vertex_endpoint: AxisVec<Endpoint>) -> bool {
-        self.0 == VertexMask::from_vertex(vertex_endpoint).0
+    pub fn vertex_is_set_excl<A: Axis>(&self, end: Endpoint<A>, t_end: Endpoint<A::T>) -> bool {
+        self.0 == VertexMask::from_vertex(end, t_end).0
     }
 
     /// Returns `true` if both vertices of the given edge are set.
-    pub fn edge_all_set<A: Axis>(&self, endpoint: Endpoint) -> bool {
+    pub fn edge_all_set<A: Axis>(&self, endpoint: Endpoint<A>) -> bool {
         self.isolate_edge::<A>(endpoint).0.count_ones() == 2
     }
 
     /// Returns `true` if either vertex of the given edge are set.
-    pub fn edge_any_set<A: Axis>(&self, endpoint: Endpoint) -> bool {
+    pub fn edge_any_set<A: Axis>(&self, endpoint: Endpoint<A>) -> bool {
         self.isolate_edge::<A>(endpoint).0.count_ones() != 0
     }
 
@@ -143,12 +140,12 @@ impl VertexMask {
     /// let left = VertexMask::LEFT;
     /// let bottom_right = VertexMask::BOTTOM_RIGHT_INCL;
     ///
-    /// // Select the left edge (The lower endpoint of axis X).
-    /// assert_eq!(top_left.isolate_edge::<AxisX>(Endpoint::Lower), AxisMask::TOP);
-    /// assert_eq!(left.isolate_edge::<AxisX>(Endpoint::Lower), AxisMask::Y);
-    /// assert_eq!(bottom_right.isolate_edge::<AxisX>(Endpoint::Lower), AxisMask::NONE);
+    /// // Select the left edge, returning an `AxisMask` with only the top and/or bottom bits set.
+    /// assert_eq!(top_left.isolate_edge(Endpoint::LEFT), AxisMask::TOP);
+    /// assert_eq!(left.isolate_edge(Endpoint::LEFT), AxisMask::Y);
+    /// assert_eq!(bottom_right.isolate_edge(Endpoint::LEFT), AxisMask::NONE);
     /// ```
-    pub fn isolate_edge<A: Axis>(&self, endpoint: Endpoint) -> AxisMask {
+    pub fn isolate_edge<A: Axis>(&self, endpoint: Endpoint<A>) -> AxisMask {
         let mut isolated = *self;
         isolated.clear_edge::<A>(!endpoint);
         isolated.isolate_axis::<A>()
@@ -168,7 +165,7 @@ impl VertexMask {
     /// let left = VertexMask::LEFT;
     /// let bottom_right = VertexMask::BOTTOM_RIGHT_INCL;
     ///
-    /// // Select any endpoint on an axis X edge.
+    /// // Select any endpoint on an axis X edge (the left or right).
     /// assert_eq!(top_left.isolate_axis::<AxisX>(), AxisMask::TOP);
     /// assert_eq!(left.isolate_axis::<AxisX>(), AxisMask::Y);
     /// assert_eq!(bottom_right.isolate_axis::<AxisX>(), AxisMask::BOTTOM);
@@ -199,32 +196,32 @@ impl VertexMask {
     }
 
     /// Clear the bits of the given axis `A` and `Endpoint`.
-    pub fn clear_edge<A: Axis>(&mut self, endpoint: Endpoint) {
-        self.0 &= !Self::from_axis::<A>(endpoint).0;
+    pub fn clear_edge<A: Axis>(&mut self, end: Endpoint<A>) {
+        self.0 &= !Self::from_axis(end).0;
     }
 
     /// For the given axis `A`, return the `Endpoint` of the vertex opposite the hypotenuse. Returns
     /// `None` if `self` is not a triangle.
-    pub fn tri_endpoint<A: Axis>(&self) -> Option<Endpoint> {
+    pub fn tri_endpoint<A: Axis>(&self) -> Option<Endpoint<A>> {
         match self {
             &Self::BOTTOM_RIGHT_EXCL => match A::VALUE {
-                AxisX::VALUE => Some(Endpoint::LOW),
-                AxisY::VALUE => Some(Endpoint::LOW),
+                AxisX::VALUE => Some(Endpoint::LOWER),
+                AxisY::VALUE => Some(Endpoint::LOWER),
                 _ => unreachable!(),
             },
             &Self::TOP_RIGHT_EXCL => match A::VALUE {
-                AxisX::VALUE => Some(Endpoint::LOW),
-                AxisY::VALUE => Some(Endpoint::UPP),
+                AxisX::VALUE => Some(Endpoint::LOWER),
+                AxisY::VALUE => Some(Endpoint::UPPER),
                 _ => unreachable!(),
             },
             &Self::BOTTOM_LEFT_EXCL => match A::VALUE {
-                AxisX::VALUE => Some(Endpoint::UPP),
-                AxisY::VALUE => Some(Endpoint::LOW),
+                AxisX::VALUE => Some(Endpoint::UPPER),
+                AxisY::VALUE => Some(Endpoint::LOWER),
                 _ => unreachable!(),
             },
             &Self::TOP_LEFT_EXCL => match A::VALUE {
-                AxisX::VALUE => Some(Endpoint::UPP),
-                AxisY::VALUE => Some(Endpoint::UPP),
+                AxisX::VALUE => Some(Endpoint::UPPER),
+                AxisY::VALUE => Some(Endpoint::UPPER),
                 _ => unreachable!(),
             },
             _ => None,
@@ -264,16 +261,16 @@ impl VertexMask {
 
     /// Isolate the bits of the given axis `A` and [`Endpoint`], compacting to the
     /// right. Returns a `u8`.
-    pub fn compact<A: Axis>(self, endpoint: Endpoint) -> u8 {
+    pub fn compact<A: Axis>(self, end: Endpoint<A>) -> u8 {
         let mask = match A::VALUE {
             AxisX::VALUE => self,
             AxisY::VALUE => self.transpose(),
             _ => unreachable!(),
         };
 
-        match endpoint {
-            Endpoint::LOW => mask.0 & 0b0011,
-            Endpoint::UPP => mask.0 >> 2,
+        match *end {
+            EndpointBound::Lower => mask.0 & 0b0011,
+            EndpointBound::Upper => mask.0 >> 2,
         }
     }
 
@@ -412,12 +409,6 @@ impl<'a> From<&'a u8> for VertexMask {
     }
 }
 
-impl From<AxisVec<Endpoint>> for VertexMask {
-    fn from(value: AxisVec<Endpoint>) -> Self {
-        VertexMask::from_vertex(value)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -425,20 +416,20 @@ mod tests {
     #[test]
     fn isolate_edge() {
         let tl_mask = VertexMask::BOTTOM_RIGHT_EXCL;
-        let tl_left = tl_mask.isolate_edge::<AxisX>(Endpoint::LOW);
-        let tl_right = tl_mask.isolate_edge::<AxisX>(Endpoint::UPP);
-        let tl_top = tl_mask.isolate_edge::<AxisY>(Endpoint::LOW);
-        let tl_bottom = tl_mask.isolate_edge::<AxisY>(Endpoint::UPP);
+        let tl_left = tl_mask.isolate_edge::<AxisX>(Endpoint::LOWER);
+        let tl_right = tl_mask.isolate_edge::<AxisX>(Endpoint::UPPER);
+        let tl_top = tl_mask.isolate_edge::<AxisY>(Endpoint::LOWER);
+        let tl_bottom = tl_mask.isolate_edge::<AxisY>(Endpoint::UPPER);
         assert_eq!(tl_left, AxisMask::Y);
         assert_eq!(tl_right, AxisMask::TOP);
         assert_eq!(tl_top, AxisMask::X);
         assert_eq!(tl_bottom, AxisMask::LEFT);
 
         let tr_mask = VertexMask::BOTTOM_LEFT_EXCL;
-        let tr_left = tr_mask.isolate_edge::<AxisX>(Endpoint::LOW);
-        let tr_right = tr_mask.isolate_edge::<AxisX>(Endpoint::UPP);
-        let tr_top = tr_mask.isolate_edge::<AxisY>(Endpoint::LOW);
-        let tr_bottom = tr_mask.isolate_edge::<AxisY>(Endpoint::UPP);
+        let tr_left = tr_mask.isolate_edge::<AxisX>(Endpoint::LOWER);
+        let tr_right = tr_mask.isolate_edge::<AxisX>(Endpoint::UPPER);
+        let tr_top = tr_mask.isolate_edge::<AxisY>(Endpoint::LOWER);
+        let tr_bottom = tr_mask.isolate_edge::<AxisY>(Endpoint::UPPER);
         assert_eq!(tr_left, AxisMask::TOP);
         assert_eq!(tr_right, AxisMask::Y);
         assert_eq!(tr_top, AxisMask::X);

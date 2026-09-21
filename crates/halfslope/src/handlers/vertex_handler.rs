@@ -1,8 +1,8 @@
 use std::ops::{ControlFlow, Range};
 
+use tilebound::ctx::scene::Scene;
 use tilebound::plane::axis::Axis;
 use tilebound::plane::endpoint::Endpoint;
-use tilebound::schema::scene::Scene;
 use tilebound::topology::vertex::Vertex;
 
 use crate::collision::{Collision, EdgeRange};
@@ -23,7 +23,7 @@ pub trait VertexHandler<A: Axis, Sc, Map> {
     /// Receives the [`Endpoint`] of the triangle on the transpose axis.
     fn handle_tri(
         tgt: Vertex<A>,
-        t_end: Endpoint,
+        t_end: Endpoint<A::T>,
         state: &mut State,
         scene: &Scene<Sc, Map>,
     ) -> ControlFlow<Collision<A::T>>;

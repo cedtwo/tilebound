@@ -1,4 +1,5 @@
 use macroquad::prelude::*;
+use tilebound::ops::array_index_to_tile_pos;
 use tilebound_halfslope::prelude::*;
 
 type Sc = ConSc<32>;
@@ -129,11 +130,7 @@ fn draw_map(map: &VecMap<VertexPattern>) {
         WHITE,
     );
     map.vec.iter().enumerate().for_each(|(i, tile)| {
-        // The top-left position of a tile.
-        let tl = Vec2::new(
-            (i as i32 % map_size.y() as i32 * Sc::SCALE_INT) as f32,
-            (i as i32 / map_size.y() as i32 * Sc::SCALE_INT) as f32,
-        );
+        let tl: Vec2 = array_index_to_tile_pos::<Sc, _>(i, map).take().into();
         let tr = || tl + Vec2::new(Sc::SCALE, 0.0);
         let bl = || tl + Vec2::new(0.0, Sc::SCALE);
         let br = || tl + Vec2::new(Sc::SCALE, Sc::SCALE);
