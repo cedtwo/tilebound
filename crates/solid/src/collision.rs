@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use std::ops::{ControlFlow, Range};
 
 use bitvec::prelude::*;
@@ -35,12 +34,10 @@ impl<A> From<Collision<A>> for ControlFlow<Break<Collision<A>>> {
 /// over solid tiles and their respective indices.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TileRange<A> {
-    /// The tile range axis.
-    pub axis: PhantomData<A>,
     /// The index of the first tile.
     pub start_idx: AxisVec<i32>,
-    /// The number of out of bound tiles on each endpoint of axis `A`.
-    pub padding: EndpointPair<i32>,
+    /// The number of out of bound tiles on each endpoint of the axis.
+    pub padding: EndpointPair<A, i32>,
     /// The backing [`BitVec`]. Stores each solid tile as `1`.
     pub(super) array: BitVec,
 }
@@ -61,7 +58,6 @@ impl<A: Axis> TileRange<A> {
     /// ```
     pub fn new(t_index: i32, range: Range<i32>) -> Self {
         Self {
-            axis: PhantomData,
             start_idx: AxisVec::new_mapped::<A>(range.start, t_index),
             padding: EndpointPair::new(0, 0),
             array: BitVec::repeat(false, range.len()),
@@ -71,7 +67,6 @@ impl<A: Axis> TileRange<A> {
     /// Create a new `TileRange` from a starting index and a [`BitVec`] array.
     pub fn from_array(index: impl Into<AxisVec<i32>>, array: BitVec) -> Self {
         Self {
-            axis: PhantomData,
             start_idx: index.into(),
             array,
             padding: EndpointPair::new(0, 0),
@@ -81,7 +76,6 @@ impl<A: Axis> TileRange<A> {
     /// Create a new `TileRange` from a [`SliceIndex`].
     pub fn from_index(index: &SliceIndex<A>) -> Self {
         Self {
-            axis: PhantomData,
             start_idx: AxisVec::new_mapped::<A>(index.inbound_range_start(), index.t_index as i32),
             array: BitVec::with_capacity(index.len_cropped()),
             padding: index.padding(),
@@ -140,7 +134,7 @@ impl<A: Axis, Map: TileMapView<A, El: SolidTile>> TileMapInspect<A, Map> for Til
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "arraymap"))]
 mod tests {
 
     use super::*;
@@ -154,9 +148,9 @@ mod tests {
 
     #[test]
     fn iter_in_bounds_col() {
-        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 3, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisY>::new_unchecked(1, -2..5, 3, Endpoint::Lower);
-        let idx_2 = SliceIndex::<AxisY>::new_unchecked(2, -2..5, 3, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 3, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisY>::new_unchecked(1, -2..5, 3, Endpoint::LOWER);
+        let idx_2 = SliceIndex::<AxisY>::new_unchecked(2, -2..5, 3, Endpoint::LOWER);
 
         let c0 = TileRange::inspect(&MAP, &idx_0);
         let c0 = c0.iter_in_bounds().collect::<Vec<_>>();
@@ -175,9 +169,9 @@ mod tests {
 
     #[test]
     fn iter_in_bounds_row() {
-        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 3, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisX>::new_unchecked(1, -2..5, 3, Endpoint::Lower);
-        let idx_2 = SliceIndex::<AxisX>::new_unchecked(2, -2..5, 3, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 3, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisX>::new_unchecked(1, -2..5, 3, Endpoint::LOWER);
+        let idx_2 = SliceIndex::<AxisX>::new_unchecked(2, -2..5, 3, Endpoint::LOWER);
 
         let r0 = TileRange::inspect(&MAP, &idx_0);
         let r0 = r0.iter_in_bounds().collect::<Vec<_>>();
@@ -196,9 +190,9 @@ mod tests {
 
     #[test]
     fn iter_all_col() {
-        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 3, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisY>::new_unchecked(1, -2..5, 3, Endpoint::Lower);
-        let idx_2 = SliceIndex::<AxisY>::new_unchecked(2, -2..5, 3, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 3, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisY>::new_unchecked(1, -2..5, 3, Endpoint::LOWER);
+        let idx_2 = SliceIndex::<AxisY>::new_unchecked(2, -2..5, 3, Endpoint::LOWER);
 
         let c0 = TileRange::inspect(&MAP, &idx_0);
         let c0 = c0.iter_all().collect::<Vec<_>>();
@@ -217,9 +211,9 @@ mod tests {
 
     #[test]
     fn iter_all_row() {
-        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 3, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisX>::new_unchecked(1, -2..5, 3, Endpoint::Lower);
-        let idx_2 = SliceIndex::<AxisX>::new_unchecked(2, -2..5, 3, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 3, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisX>::new_unchecked(1, -2..5, 3, Endpoint::LOWER);
+        let idx_2 = SliceIndex::<AxisX>::new_unchecked(2, -2..5, 3, Endpoint::LOWER);
 
         let r0 = TileRange::inspect(&MAP, &idx_0);
         let r0 = r0.iter_all().collect::<Vec<_>>();
@@ -238,9 +232,9 @@ mod tests {
 
     #[test]
     fn iter_solid_col() {
-        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 3, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisY>::new_unchecked(1, -2..5, 3, Endpoint::Lower);
-        let idx_2 = SliceIndex::<AxisY>::new_unchecked(2, -2..5, 3, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisY>::new_unchecked(0, -2..5, 3, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisY>::new_unchecked(1, -2..5, 3, Endpoint::LOWER);
+        let idx_2 = SliceIndex::<AxisY>::new_unchecked(2, -2..5, 3, Endpoint::LOWER);
 
         let c0 = TileRange::inspect(&MAP, &idx_0);
         let c0 = c0.iter_solid().collect::<Vec<_>>();
@@ -256,9 +250,9 @@ mod tests {
 
     #[test]
     fn iter_solid_row() {
-        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 3, Endpoint::Lower);
-        let idx_1 = SliceIndex::<AxisX>::new_unchecked(1, -2..5, 3, Endpoint::Lower);
-        let idx_2 = SliceIndex::<AxisX>::new_unchecked(2, -2..5, 3, Endpoint::Lower);
+        let idx_0 = SliceIndex::<AxisX>::new_unchecked(0, -2..5, 3, Endpoint::LOWER);
+        let idx_1 = SliceIndex::<AxisX>::new_unchecked(1, -2..5, 3, Endpoint::LOWER);
+        let idx_2 = SliceIndex::<AxisX>::new_unchecked(2, -2..5, 3, Endpoint::LOWER);
 
         let r0 = TileRange::inspect(&MAP, &idx_0);
         let r0 = r0.iter_solid().collect::<Vec<_>>();

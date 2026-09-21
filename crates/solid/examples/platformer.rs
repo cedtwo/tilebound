@@ -1,5 +1,6 @@
 use bitvec::prelude::*;
 use macroquad::prelude::*;
+use tilebound::{ops::array_index_to_tile_pos, plane::endpoint::EndpointBound};
 use tilebound_solid::prelude::*;
 
 type Sc = ConSc<32>;
@@ -59,26 +60,27 @@ async fn main() {
 
         // Return the attached (colliding) endpoint for the Y axis. Note that only one endpoint will
         // ever be set at a time.
-        match attmask.first_end::<AxisY>() {
-            // Colliding with the ceiling. See also `AxisMask::top`.
-            Some(Endpoint::Lower) => {
-                // Prevent upward velocity when colliding with the ceiling.
-                vel_y = f32::max(vel_y, 0.0);
-                vel_y += GRAV * get_frame_time();
-            }
-            // Colliding with the floor. See also `AxisMask::bottom`.
-            Some(Endpoint::Upper) => {
-                // Set velocity to zero or jump.
-                if is_key_pressed(KeyCode::Space) {
-                    vel_y = JUMP * get_frame_time();
-                } else {
-                    vel_y = 0.0
+        if let Some(end) = attmask.first_end::<AxisY>() {
+            match *end {
+                // Colliding with the ceiling. See also `Endpoint::TOP`.
+                EndpointBound::Lower => {
+                    // Prevent upward velocity when colliding with the ceiling.
+                    vel_y = f32::max(vel_y, 0.0);
+                    vel_y += GRAV * get_frame_time();
+                }
+                // Colliding with the floor. See also `AxisMask::bottom`.
+                EndpointBound::Upper => {
+                    // Set velocity to zero or jump.
+                    if is_key_pressed(KeyCode::Space) {
+                        vel_y = JUMP * get_frame_time();
+                    } else {
+                        vel_y = 0.0
+                    }
                 }
             }
+        } else {
             // Falling.
-            None => {
-                vel_y += GRAV * get_frame_time();
-            }
+            vel_y += GRAV * get_frame_time();
         }
 
         let mut state = State::new::<Sc>(((x, y), (len_x, len_y), attmask));
@@ -127,9 +129,10 @@ async fn main() {
 fn draw_map(map: &BitMap) {
     // Draw the map.
     map.store.iter().enumerate().for_each(|(i, is_solid)| {
+        let tl = array_index_to_tile_pos::<Sc, _>(i, map);
         draw_rectangle(
-            (i as i32 % map.size().y() as i32 * Sc::SCALE_INT) as f32,
-            (i as i32 / map.size().y() as i32 * Sc::SCALE_INT) as f32,
+            tl.x(),
+            tl.y(),
             Sc::SCALE,
             Sc::SCALE,
             if *is_solid { BLACK } else { WHITE },

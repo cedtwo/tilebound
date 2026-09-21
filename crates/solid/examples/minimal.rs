@@ -1,5 +1,6 @@
 use bitvec::prelude::*;
 use macroquad::prelude::*;
+use tilebound::ops::array_index_to_tile_pos;
 use tilebound_solid::prelude::*;
 
 type Sc = ConSc<32>;
@@ -99,9 +100,10 @@ async fn main() {
 fn draw_map(map: &BitMap) {
     // Draw the map.
     map.store.iter().enumerate().for_each(|(i, is_solid)| {
+        let tl = array_index_to_tile_pos::<Sc, _>(i, map);
         draw_rectangle(
-            (i as i32 % map.size().y() as i32 * Sc::SCALE_INT) as f32,
-            (i as i32 / map.size().y() as i32 * Sc::SCALE_INT) as f32,
+            tl.x(),
+            tl.y(),
             Sc::SCALE,
             Sc::SCALE,
             if *is_solid { BLACK } else { WHITE },

@@ -2,10 +2,10 @@ use std::ops::ControlFlow;
 
 use crate::collision::{Collision, TileRange};
 use crate::tile::SolidTile;
+use tilebound::ctx::brk::Break;
+use tilebound::ctx::state::DetachOp;
 use tilebound::ops::*;
 use tilebound::prelude::*;
-use tilebound::schema::brk::Break;
-use tilebound::schema::state::DetachOp;
 use tilebound::topology::vertex::Vertex;
 
 /// # Context
@@ -158,7 +158,7 @@ impl<Sc: Scale, Map: TileMap> Context<Sc, Map> {
             // Do not check collisions on already intersected tiles.
             true => Self::to_intersected_tile(tgt, state),
             // Check the tilemap view for collisions, or handle displacing over the map bounds.
-            false => match inspect_intersected::<_, _, _, _, TileRange<A::T>>(tgt, state, scene) {
+            false => match scene.inspect_intersected::<_, _, TileRange<A::T>>(tgt, state) {
                 Ok(tiles) => Self::to_next_tile(tgt, state, tiles),
                 Err(_) => Self::to_out_of_bounds(tgt, state, scene),
             },
@@ -254,7 +254,7 @@ mod tests {
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::ALL);
 
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(-1.0, Endpoint::LOW);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(-1.0, Endpoint::LOWER);
             let r = Context::handle_vertex::<AxisX>(tgt, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (0.0, 0.0).into());
@@ -266,7 +266,7 @@ mod tests {
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::NONE);
 
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(-1.0, Endpoint::LOW);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(-1.0, Endpoint::LOWER);
             let r = Context::handle_vertex::<AxisX>(tgt, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (-1.0, 0.0).into());
@@ -278,7 +278,7 @@ mod tests {
             let mut state = State::new::<Sc>(((0.0, 0.0), (15.0, 16.0), AxisMask::NONE));
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::ALL);
 
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::UPP);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::UPPER);
             let r = Context::handle_vertex::<AxisX>(tgt, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (1.0, 0.0).into());
@@ -290,7 +290,7 @@ mod tests {
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::ALL);
 
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(17.0, Endpoint::UPP);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(17.0, Endpoint::UPPER);
             let r = Context::handle_vertex::<AxisX>(tgt, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (1.0, 0.0).into());
@@ -307,7 +307,7 @@ mod tests {
             let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
             let scene = Scene::<Sc, _>::new(map, AxisMask::ALL);
 
-            let tgt = Vertex::<AxisX>::from_pos::<Sc>(17.0, Endpoint::UPP);
+            let tgt = Vertex::<AxisX>::from_pos::<Sc>(17.0, Endpoint::UPPER);
             let r = Context::handle_vertex::<AxisX>(tgt, &mut state, &scene);
 
             assert_eq!(state.pos_vec::<Sc>(), (0.0, 0.0).into());

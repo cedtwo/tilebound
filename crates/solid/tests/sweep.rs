@@ -1,4 +1,4 @@
-use tilebound::schema::brk::Break;
+use tilebound::ctx::brk::Break;
 use tilebound_solid::prelude::*;
 
 type Sc = ConSc<16>;

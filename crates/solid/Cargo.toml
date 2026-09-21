@@ -12,7 +12,7 @@ categories = ["game-development"]
 
 [dependencies]
 bitvec = "1.1.1"
-tilebound = { version = "0.1.2" }
+tilebound = { version = "0.2.0" }
 
 [dev-dependencies]
 macroquad = { version = "0.4" }
