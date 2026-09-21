@@ -352,6 +352,17 @@ where
     }
 }
 
+impl<T> Add<AxisVec<T>> for AxisVec<T>
+where
+    T: Clone + Copy + Add<T, Output = T>,
+{
+    type Output = AxisVec<T>;
+
+    fn add(self, rhs: AxisVec<T>) -> Self::Output {
+        self.map_with(rhs, |a, b| a + b)
+    }
+}
+
 impl<T> Sub<T> for AxisVec<T>
 where
     T: Clone + Copy + Sub<T, Output = T>,
@@ -364,6 +375,17 @@ where
     }
 }
 
+impl<T> Sub<AxisVec<T>> for AxisVec<T>
+where
+    T: Clone + Copy + Sub<T, Output = T>,
+{
+    type Output = AxisVec<T>;
+
+    fn sub(self, rhs: AxisVec<T>) -> Self::Output {
+        self.map_with(rhs, |a, b| a - b)
+    }
+}
+
 impl<T> Mul<T> for AxisVec<T>
 where
     T: Clone + Copy + Mul<T, Output = T>,
@@ -373,5 +395,16 @@ where
     fn mul(mut self, rhs: T) -> Self::Output {
         self.0.iter_mut().for_each(|el| *el = *el * rhs);
         self
+    }
+}
+
+impl<T> Mul<AxisVec<T>> for AxisVec<T>
+where
+    T: Clone + Copy + Mul<T, Output = T>,
+{
+    type Output = AxisVec<T>;
+
+    fn mul(self, rhs: AxisVec<T>) -> Self::Output {
+        self.map_with(rhs, |a, b| a * b)
     }
 }
