@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 use std::fmt::Debug;
 
+use crate::ops::{index_to_raw_pos, raw_pos_to_index};
 use crate::plane::axis::{Axis, DynAxis};
 use crate::plane::endpoint::{Endpoint, EndpointBound};
 use crate::plane::scale::Scale;
@@ -90,7 +91,7 @@ impl<A> Vertex<A> {
     /// assert_eq!(vertex_offset.offset_value(), 0.1);
     /// ```
     pub fn from_pos<Sc: Scale>(pos: f32, end: Endpoint<A>) -> Self {
-        let index = (pos / Sc::SCALE).floor() as i32;
+        let index = raw_pos_to_index::<Sc>(pos);
         let offset = pos.rem_euclid(Sc::SCALE);
 
         Self::from_parts::<Sc>(index, offset, end)
@@ -202,7 +203,7 @@ impl<A> Vertex<A> {
 
     /// Return the `f32` vertex position. See also [`Edge::pos`].
     pub fn to_pos<Sc: Scale>(&self) -> f32 {
-        (self.index * Sc::SCALE_INT) as f32 + self.offset_value()
+        index_to_raw_pos::<Sc>(self.index) + self.offset_value()
     }
 
     /// Translate the vertex by the given `delta`.
