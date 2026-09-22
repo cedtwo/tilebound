@@ -61,11 +61,11 @@ impl<R> State<R> {
         let ends = self.pos_vec::<Sc>().map_with(last_pos, |curr, last| {
             Endpoint::from_partial_cmp(curr, last).unwrap_or_default()
         });
-        self.curr_edges.x_mut().set_inbound_end::<Sc>(ends.x());
-        self.curr_edges.y_mut().set_inbound_end::<Sc>(ends.y());
+        self.curr_edges.x_mut().set_inbound_end::<Sc>(ends.x);
+        self.curr_edges.y_mut().set_inbound_end::<Sc>(ends.y);
         self.last_verts = last_pos.map_with(ends, |pos, end| Vertex::from_pos::<Sc>(pos, end));
-        debug_assert_eq!(self.curr_edges.x().end(), self.last_verts.x().endpoint());
-        debug_assert_eq!(self.curr_edges.y().end(), self.last_verts.y().endpoint());
+        debug_assert_eq!(self.curr_edges.x.end(), self.last_verts.x.endpoint());
+        debug_assert_eq!(self.curr_edges.y.end(), self.last_verts.y.endpoint());
 
         self
     }
@@ -154,7 +154,7 @@ impl<R> State<R> {
 
     /// Get the collider size.
     pub fn size(&self) -> AxisVec<f32> {
-        AxisVec::new(self.curr_edges.x().len(), self.curr_edges.y().len())
+        AxisVec::new(self.curr_edges.x.len(), self.curr_edges.y.len())
     }
 
     /// Get the `f32` position on the given axis. See [`Edge::lower_pos`].
@@ -477,8 +477,8 @@ pub trait StatePayloadMut<R> {
 impl StatePayloadMut<()> for (&mut f32, &mut f32, &mut AxisMask) {
     fn apply<Sc: Scale>(&mut self, state: State<()>) {
         let pos = state.pos_vec::<Sc>();
-        *self.0 = pos.x();
-        *self.1 = pos.y();
+        *self.0 = pos.x;
+        *self.1 = pos.y;
         *self.2 = state.curr_attmask;
     }
 }
@@ -486,8 +486,8 @@ impl StatePayloadMut<()> for (&mut f32, &mut f32, &mut AxisMask) {
 impl StatePayloadMut<()> for (AxisVec<&mut f32>, &mut AxisMask) {
     fn apply<Sc: Scale>(&mut self, state: State<()>) {
         let pos = state.pos_vec::<Sc>();
-        **self.0.x_mut() = pos.x();
-        **self.0.y_mut() = pos.y();
+        **self.0.x_mut() = pos.x;
+        **self.0.y_mut() = pos.y;
         *self.1 = state.curr_attmask;
     }
 }
@@ -495,8 +495,8 @@ impl StatePayloadMut<()> for (AxisVec<&mut f32>, &mut AxisMask) {
 impl StatePayloadMut<()> for (&mut AxisVec<f32>, &mut AxisMask) {
     fn apply<Sc: Scale>(&mut self, state: State<()>) {
         let pos = state.pos_vec::<Sc>();
-        *self.0.x_mut() = pos.x();
-        *self.0.y_mut() = pos.y();
+        *self.0.x_mut() = pos.x;
+        *self.0.y_mut() = pos.y;
         *self.1 = state.curr_attmask;
     }
 }
@@ -504,8 +504,8 @@ impl StatePayloadMut<()> for (&mut AxisVec<f32>, &mut AxisMask) {
 impl StatePayloadMut<()> for ((&mut f32, &mut f32), &mut AxisMask) {
     fn apply<Sc: Scale>(&mut self, state: State<()>) {
         let pos = state.pos_vec::<Sc>();
-        *self.0.0 = pos.x();
-        *self.0.1 = pos.y();
+        *self.0.0 = pos.x;
+        *self.0.1 = pos.y;
         *self.1 = state.curr_attmask;
     }
 }
@@ -513,8 +513,8 @@ impl StatePayloadMut<()> for ((&mut f32, &mut f32), &mut AxisMask) {
 impl StatePayloadMut<()> for (&mut (f32, f32), &mut AxisMask) {
     fn apply<Sc: Scale>(&mut self, state: State<()>) {
         let pos = state.pos_vec::<Sc>();
-        self.0.0 = pos.x();
-        self.0.1 = pos.y();
+        self.0.0 = pos.x;
+        self.0.1 = pos.y;
         *self.1 = state.curr_attmask;
     }
 }
@@ -522,8 +522,8 @@ impl StatePayloadMut<()> for (&mut (f32, f32), &mut AxisMask) {
 impl<R> StatePayloadMut<R> for (&mut f32, &mut f32, &mut AxisMask, &mut R) {
     fn apply<Sc: Scale>(&mut self, state: State<R>) {
         let pos = state.pos_vec::<Sc>();
-        *self.0 = pos.x();
-        *self.1 = pos.y();
+        *self.0 = pos.x;
+        *self.1 = pos.y;
         *self.2 = state.curr_attmask;
         *self.3 = state.res;
     }
@@ -532,8 +532,8 @@ impl<R> StatePayloadMut<R> for (&mut f32, &mut f32, &mut AxisMask, &mut R) {
 impl<R> StatePayloadMut<R> for (AxisVec<&mut f32>, &mut AxisMask, &mut R) {
     fn apply<Sc: Scale>(&mut self, state: State<R>) {
         let pos = state.pos_vec::<Sc>();
-        **self.0.x_mut() = pos.x();
-        **self.0.y_mut() = pos.y();
+        **self.0.x_mut() = pos.x;
+        **self.0.y_mut() = pos.y;
         *self.1 = state.curr_attmask;
         *self.2 = state.res;
     }
@@ -542,8 +542,8 @@ impl<R> StatePayloadMut<R> for (AxisVec<&mut f32>, &mut AxisMask, &mut R) {
 impl<R> StatePayloadMut<R> for (&mut AxisVec<f32>, &mut AxisMask, &mut R) {
     fn apply<Sc: Scale>(&mut self, state: State<R>) {
         let pos = state.pos_vec::<Sc>();
-        *self.0.x_mut() = pos.x();
-        *self.0.y_mut() = pos.y();
+        *self.0.x_mut() = pos.x;
+        *self.0.y_mut() = pos.y;
         *self.1 = state.curr_attmask;
         *self.2 = state.res;
     }
@@ -552,8 +552,8 @@ impl<R> StatePayloadMut<R> for (&mut AxisVec<f32>, &mut AxisMask, &mut R) {
 impl<R> StatePayloadMut<R> for ((&mut f32, &mut f32), &mut AxisMask, &mut R) {
     fn apply<Sc: Scale>(&mut self, state: State<R>) {
         let pos = state.pos_vec::<Sc>();
-        *self.0.0 = pos.x();
-        *self.0.1 = pos.y();
+        *self.0.0 = pos.x;
+        *self.0.1 = pos.y;
         *self.1 = state.curr_attmask;
         *self.2 = state.res;
     }
@@ -562,8 +562,8 @@ impl<R> StatePayloadMut<R> for ((&mut f32, &mut f32), &mut AxisMask, &mut R) {
 impl<R> StatePayloadMut<R> for (&mut (f32, f32), &mut AxisMask, &mut R) {
     fn apply<Sc: Scale>(&mut self, state: State<R>) {
         let pos = state.pos_vec::<Sc>();
-        self.0.0 = pos.x();
-        self.0.1 = pos.y();
+        self.0.0 = pos.x;
+        self.0.1 = pos.y;
         *self.1 = state.curr_attmask;
         *self.2 = state.res;
     }
@@ -634,35 +634,35 @@ mod tests {
             .with_last_pos::<Sc>((10.0, -10.0));
 
         assert_eq!(
-            state0.curr_edges.x().inbound_vertex().cast::<AxisX>(),
+            state0.curr_edges.x.inbound_vertex().cast::<AxisX>(),
             Vertex::from_pos::<Sc>(1.0, Endpoint::RIGHT)
         );
         assert_eq!(
-            state0.last_verts.x().cast::<AxisX>(),
+            state0.last_verts.x.cast::<AxisX>(),
             Vertex::from_pos::<Sc>(-10.0, Endpoint::RIGHT)
         );
         assert_eq!(
-            state0.curr_edges.y().inbound_vertex().cast::<AxisY>(),
+            state0.curr_edges.y.inbound_vertex().cast::<AxisY>(),
             Vertex::from_pos::<Sc>(0.0, Endpoint::TOP)
         );
         assert_eq!(
-            state0.last_verts.y().cast::<AxisY>(),
+            state0.last_verts.y.cast::<AxisY>(),
             Vertex::from_pos::<Sc>(10.0, Endpoint::TOP)
         );
         assert_eq!(
-            state1.curr_edges.x().inbound_vertex().cast::<AxisX>(),
+            state1.curr_edges.x.inbound_vertex().cast::<AxisX>(),
             Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT)
         );
         assert_eq!(
-            state1.last_verts.x().cast::<AxisX>(),
+            state1.last_verts.x.cast::<AxisX>(),
             Vertex::from_pos::<Sc>(10.0, Endpoint::LEFT)
         );
         assert_eq!(
-            state1.curr_edges.y().inbound_vertex().cast::<AxisY>(),
+            state1.curr_edges.y.inbound_vertex().cast::<AxisY>(),
             Vertex::from_pos::<Sc>(1.0, Endpoint::BOTTOM)
         );
         assert_eq!(
-            state1.last_verts.y().cast::<AxisY>(),
+            state1.last_verts.y.cast::<AxisY>(),
             Vertex::from_pos::<Sc>(-10.0, Endpoint::BOTTOM)
         );
     }

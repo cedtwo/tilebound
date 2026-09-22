@@ -22,7 +22,7 @@ pub fn raw_pos_to_index<Sc: Scale>(pos: f32) -> i32 {
 /// Return a two-dimensional `AxisVec<i32>` tile index from a contiguous array index.
 pub fn array_index_to_tile_index<Map: TileMap>(i: usize, map: Map) -> AxisVec<i32> {
     let map_size = map.size();
-    AxisVec::new((i % map_size.y()) as i32, (i / map_size.y()) as i32)
+    AxisVec::new((i % map_size.y) as i32, (i / map_size.y) as i32)
 }
 
 /// Return a two-dimensional `AxisVec<f32>` tile position from a contiguous array index. Returns the
@@ -30,7 +30,7 @@ pub fn array_index_to_tile_index<Map: TileMap>(i: usize, map: Map) -> AxisVec<i3
 pub fn array_index_to_tile_pos<Sc: Scale, Map: TileMap>(i: usize, map: Map) -> AxisVec<f32> {
     let map_size = map.size();
     AxisVec::new(
-        (i % map_size.y()) as f32 * Sc::SCALE,
-        (i / map_size.y()) as f32 * Sc::SCALE,
+        (i % map_size.y) as f32 * Sc::SCALE,
+        (i / map_size.y) as f32 * Sc::SCALE,
     )
 }

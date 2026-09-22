@@ -86,7 +86,7 @@ impl<T> VecMap<T> {
     /// **Panics** if the dimensions do not match the vector size.
     pub fn new(vec: Vec<T>, dim: impl Into<AxisVec<usize>>) -> Self {
         let dim = dim.into();
-        assert_eq!(vec.len(), dim.flat_map(|[x, y]| x * y));
+        assert_eq!(vec.len(), dim.product());
         Self { vec, dim }
     }
 
@@ -104,8 +104,8 @@ impl<T: Copy> TileMap for VecMap<T> {
 
     fn axis_len<A: Axis>(&self) -> usize {
         match A::VALUE {
-            AxisX::VALUE => self.dim.x(),
-            AxisY::VALUE => self.dim.y(),
+            AxisX::VALUE => self.dim.x,
+            AxisY::VALUE => self.dim.y,
             _ => unreachable!(),
         }
     }
@@ -118,7 +118,7 @@ impl<T: Copy> TileMapView<AxisX> for VecMap<T> {
         T: 'a;
 
     fn view(&self, idx: usize, range: Range<usize>) -> Self::View<'_> {
-        let start = idx * self.dim.y() + range.start;
+        let start = idx * self.dim.y + range.start;
         let end = start + range.len();
 
         &self.vec[start..end]
@@ -134,7 +134,7 @@ impl<T: Copy> TileMapView<AxisY> for VecMap<T> {
     fn view(&self, idx: usize, range: Range<usize>) -> Self::View<'_> {
         ColStrideIter {
             slice: self.vec.as_slice(),
-            row_len: self.dim.y(),
+            row_len: self.dim.y,
             col_idx: idx,
             range,
         }

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::iter::{Product, Sum};
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Deref, Mul, Sub};
 
 use marker_value::MarkerValue;
 use num_traits::{ConstZero, Num};
@@ -12,13 +12,16 @@ use crate::plane::axis::*;
 /// A two-dimensional vector of values `T` mapped to an axis index. Provides operations for element
 /// access and mutation by either generic or dynamic axis ([`Axis`] or [`DynAxis`] respectively).
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Ord, Eq)]
-pub struct AxisVec<T>([T; 2]);
+pub struct AxisVec<T> {
+    pub x: T,
+    pub y: T,
+}
 
 impl<T> AxisVec<T> {
     /// Create a new `AxisVec` of the given variables.
     #[inline]
     pub const fn new(x: T, y: T) -> Self {
-        Self([x, y])
+        Self { x, y }
     }
 
     /// Create a new `AxisVec` setting both variables to the given `value`.
@@ -27,66 +30,42 @@ impl<T> AxisVec<T> {
     where
         T: Copy,
     {
-        Self([value, value])
-    }
-
-    /// Get a copy of the value assigned to axis *x*.
-    pub const fn x(&self) -> T
-    where
-        T: Copy,
-    {
-        self.0[0]
-    }
-
-    /// Get a copy of the value assigned to axis *y*.
-    pub const fn y(&self) -> T
-    where
-        T: Copy,
-    {
-        self.0[1]
+        Self::new(value, value)
     }
 
     /// Get a reference to the value assigned to axis *x*.
     pub const fn x_ref(&self) -> &T {
-        &self.0[0]
+        &self.x
     }
 
     /// Get a reference to the value assigned to axis *y*.
     pub const fn y_ref(&self) -> &T {
-        &self.0[1]
+        &self.y
     }
 
     /// Get a mutable reference to the value assigned to axis *x*.
     pub const fn x_mut(&mut self) -> &mut T {
-        &mut self.0[0]
+        &mut self.x
     }
 
     /// Get a mutable reference to the value assigned to axis *y*.
     pub const fn y_mut(&mut self) -> &mut T {
-        &mut self.0[1]
-    }
-
-    /// Consume the `AxisVec`, returning the inner array.
-    pub fn take(self) -> [T; 2] {
-        self.0
+        &mut self.y
     }
 
     /// Return the `AxisVec` as a tuple of the *x* and *y* variables respectively.
-    pub const fn split(&self) -> (T, T)
-    where
-        T: Copy,
-    {
-        (self.x(), self.y())
+    pub fn split(self) -> (T, T) {
+        (self.x, self.y)
     }
 
-    /// Get a reference to the inner array.
-    pub const fn as_array(&self) -> &[T; 2] {
-        &self.0
+    /// Return the `AxisVec` as an array of the *x* and *y* variables respectively.
+    pub fn into_array(self) -> [T; 2] {
+        [self.x, self.y]
     }
 
     /// Return an `AxisVec` with the result of the function `F` applied to each element.
     pub fn map<F: FnMut(T) -> U, U>(self, mut f: F) -> AxisVec<U> {
-        AxisVec(self.0.map(|el| f(el)))
+        AxisVec::new(f(self.x), f(self.y))
     }
 
     /// Return an `AxisVec` with the result of the function `F` applied to the elements of `self`
@@ -96,7 +75,7 @@ impl<T> AxisVec<T> {
         T: Copy,
         U: Copy,
     {
-        AxisVec::new(f(self.x(), other.x()), f(self.y(), other.y()))
+        AxisVec::new(f(self.x, other.x), f(self.y, other.y))
     }
 
     /// Calling [`Into::into`] on the inner variables, returning `AxisVec<U>`.
@@ -104,7 +83,16 @@ impl<T> AxisVec<T> {
     where
         T: Into<U>,
     {
-        AxisVec(self.0.map(|el| el.into()))
+        AxisVec::new(self.x.into(), self.y.into())
+    }
+
+    /// Calling [`Deref::deref`] on the inner variables, returning `AxisVec<U>`.
+    pub fn map_deref<U>(self) -> AxisVec<U>
+    where
+        T: Deref<Target = U>,
+        U: Copy,
+    {
+        AxisVec::new(*self.x, *self.y)
     }
 
     /// Calling [`TryInto::try_into`] on the inner variables, returning `Result<AxisVec>`.
@@ -112,29 +100,19 @@ impl<T> AxisVec<T> {
     where
         T: TryInto<U, Error: Debug>,
     {
-        AxisVec(self.0.map(|el| el.try_into())).flatten()
-    }
-
-    /// Apply an operation on the inner array, returning the result.
-    pub fn flat_map<F: FnMut([T; 2]) -> U, U>(self, mut f: F) -> U {
-        f(self.0)
-    }
-
-    /// Apply a fallible operation to the inner array, returning the result.
-    pub fn try_flat_map<F: FnMut([T; 2]) -> Option<U>, U>(self, mut f: F) -> Option<U> {
-        f(self.0)
+        AxisVec::new(self.x.try_into(), self.y.try_into()).flatten()
     }
 
     /// Returns `true` if any element satisfies the predicate `f`.
     #[inline]
     pub fn any<F: Fn(&T) -> bool>(self, f: F) -> bool {
-        self.0.iter().any(|el| f(el))
+        f(&self.x) || f(&self.y)
     }
 
     /// Returns `true` if all elements satisfy the predicate `f`.
     #[inline]
     pub fn all<F: Fn(&T) -> bool>(self, f: F) -> bool {
-        self.0.iter().all(|el| f(el))
+        f(&self.x) && f(&self.y)
     }
 }
 
@@ -154,17 +132,29 @@ impl<T> AxisVec<T> {
     where
         T: Copy,
     {
-        self.0[A::VALUE]
+        match A::VALUE {
+            AxisX::VALUE => self.x,
+            AxisY::VALUE => self.y,
+            _ => unreachable!(),
+        }
     }
 
     /// Get a reference to the value assigned to axis `A`.
     pub fn get_ref<A: Axis>(&self) -> &T {
-        &self.0[A::VALUE]
+        match A::VALUE {
+            AxisX::VALUE => &self.x,
+            AxisY::VALUE => &self.y,
+            _ => unreachable!(),
+        }
     }
 
     /// Get a mutable reference to the value assigned to axis `A`.
     pub fn get_mut<A: Axis>(&mut self) -> &mut T {
-        &mut self.0[A::VALUE]
+        match A::VALUE {
+            AxisX::VALUE => &mut self.x,
+            AxisY::VALUE => &mut self.y,
+            _ => unreachable!(),
+        }
     }
 
     /// Get a clone of the value assigned to axis `A`.
@@ -172,7 +162,11 @@ impl<T> AxisVec<T> {
     where
         T: Clone,
     {
-        self.0[A::VALUE].clone()
+        match A::VALUE {
+            AxisX::VALUE => self.x.clone(),
+            AxisY::VALUE => self.y.clone(),
+            _ => unreachable!(),
+        }
     }
 
     /// Set default the value assigned to the axis `A`.
@@ -189,20 +183,17 @@ impl<T> AxisVec<T> {
         T: Copy,
     {
         match A::VALUE {
-            AxisX::VALUE => AxisVec::new(f(self.0[0]), self.0[1]),
-            AxisY::VALUE => AxisVec::new(self.0[0], f(self.0[1])),
+            AxisX::VALUE => AxisVec::new(f(self.x), self.y),
+            AxisY::VALUE => AxisVec::new(self.x, f(self.y)),
             _ => unreachable!(),
         }
     }
 
     /// Split variables into a `(T, T)` tuple with the axis `A` variable first.
-    pub fn split_axis<A: Axis>(self) -> (T, T)
-    where
-        T: Copy,
-    {
+    pub fn split_axis<A: Axis>(self) -> (T, T) {
         match A::VALUE {
-            AxisX::VALUE => (self.x(), self.y()),
-            AxisY::VALUE => (self.y(), self.x()),
+            AxisX::VALUE => (self.x, self.y),
+            AxisY::VALUE => (self.y, self.x),
             _ => unreachable!(),
         }
     }
@@ -224,17 +215,29 @@ impl<T> AxisVec<T> {
     where
         T: Copy,
     {
-        self.0[a as usize]
+        match a as usize {
+            AxisX::VALUE => self.x,
+            AxisY::VALUE => self.y,
+            _ => unreachable!(),
+        }
     }
 
     /// Get a reference to the value assigned to the given dynamic axis `a`.
     pub fn get_dyn_ref(&self, a: DynAxis) -> &T {
-        &self.0[a as usize]
+        match a as usize {
+            AxisX::VALUE => &self.x,
+            AxisY::VALUE => &self.y,
+            _ => unreachable!(),
+        }
     }
 
     /// Get a mutable reference to the value assigned to the given dynamic axis `a`.
     pub fn get_dyn_mut(&mut self, a: DynAxis) -> &mut T {
-        &mut self.0[a as usize]
+        match a as usize {
+            AxisX::VALUE => &mut self.x,
+            AxisY::VALUE => &mut self.y,
+            _ => unreachable!(),
+        }
     }
 
     /// Get a clone of the value assigned to the given dynamic axis `a`.
@@ -242,7 +245,11 @@ impl<T> AxisVec<T> {
     where
         T: Clone,
     {
-        self.0[a as usize].clone()
+        match a as usize {
+            AxisX::VALUE => self.x.clone(),
+            AxisY::VALUE => self.y.clone(),
+            _ => unreachable!(),
+        }
     }
 
     /// Set default the value assigned to the given dynamic axis `a`.
@@ -259,8 +266,8 @@ impl<T> AxisVec<T> {
         T: Copy,
     {
         match a as usize {
-            AxisX::VALUE => AxisVec::new(f(self.0[0]), self.0[1]),
-            AxisY::VALUE => AxisVec::new(self.0[0], f(self.0[1])),
+            AxisX::VALUE => AxisVec::new(f(self.x), self.y),
+            AxisY::VALUE => AxisVec::new(self.x, f(self.y)),
             _ => unreachable!(),
         }
     }
@@ -271,8 +278,8 @@ impl<T> AxisVec<T> {
         T: Copy,
     {
         match a as usize {
-            AxisX::VALUE => (self.x(), self.y()),
-            AxisY::VALUE => (self.y(), self.x()),
+            AxisX::VALUE => (self.x, self.y),
+            AxisY::VALUE => (self.y, self.x),
             _ => unreachable!(),
         }
     }
@@ -284,7 +291,7 @@ impl<T: Copy + Num + ConstZero> AxisVec<T> {
     where
         T: Sum<T>,
     {
-        self.0.into_iter().sum()
+        self.x + self.y
     }
 
     /// Returns the product of both axis elements.
@@ -292,21 +299,28 @@ impl<T: Copy + Num + ConstZero> AxisVec<T> {
     where
         T: Product<T>,
     {
-        self.0.into_iter().product()
+        self.x * self.y
     }
 
     /// Returns `true` if both axis elements are equal to zero.
     #[inline]
     pub fn are_zero(&self) -> bool {
-        self.0.iter().all(|el| *el == T::ZERO)
+        self.x == T::ZERO && self.y == T::ZERO
+    }
+}
+
+impl<T: Clone> AxisVec<&T> {
+    /// Return an an [`AxisVec`] with the [`Clone::clone`] called on the inner variables.
+    pub fn cloned(self) -> AxisVec<T> {
+        self.map(|var| var.clone())
     }
 }
 
 impl<T> AxisVec<Option<T>> {
     /// Converts from `AxisVec<Option<T>>` to `Option<AxisVec<T>>`.
     pub fn flatten(self) -> Option<AxisVec<T>> {
-        match self.0 {
-            [Some(x), Some(y)] => Some(AxisVec::new(x, y)),
+        match self.split() {
+            (Some(x), Some(y)) => Some(AxisVec::new(x, y)),
             _ => None,
         }
     }
@@ -315,16 +329,16 @@ impl<T> AxisVec<Option<T>> {
 impl<T, E> AxisVec<Result<T, E>> {
     /// Converts from `AxisVec<Result<T, E>>` to `Result<AxisVec<T>, E>`.
     pub fn flatten(self) -> Result<AxisVec<T>, E> {
-        match self.0 {
-            [Ok(x), Ok(y)] => Ok(AxisVec::new(x, y)),
-            [Err(e), _] | [_, Err(e)] => Err(e),
+        match self.split() {
+            (Ok(x), Ok(y)) => Ok(AxisVec::new(x, y)),
+            (Err(e), _) | (_, Err(e)) => Err(e),
         }
     }
 }
 
 impl<T: Default + Copy> Default for AxisVec<T> {
     fn default() -> Self {
-        Self([T::default(); 2])
+        Self::new(T::default(), T::default())
     }
 }
 
@@ -334,21 +348,14 @@ impl<T> From<(T, T)> for AxisVec<T> {
     }
 }
 
-impl<T> From<[T; 2]> for AxisVec<T> {
-    fn from(values: [T; 2]) -> Self {
-        AxisVec(values)
-    }
-}
-
 impl<T> Add<T> for AxisVec<T>
 where
     T: Clone + Copy + Add<T, Output = T>,
 {
     type Output = AxisVec<T>;
 
-    fn add(mut self, rhs: T) -> Self::Output {
-        self.0.iter_mut().for_each(|el| *el = *el + rhs);
-        self
+    fn add(self, rhs: T) -> Self::Output {
+        self.map(|el| el + rhs)
     }
 }
 
@@ -369,9 +376,8 @@ where
 {
     type Output = AxisVec<T>;
 
-    fn sub(mut self, rhs: T) -> Self::Output {
-        self.0.iter_mut().for_each(|el| *el = *el - rhs);
-        self
+    fn sub(self, rhs: T) -> Self::Output {
+        self.map(|el| el - rhs)
     }
 }
 
@@ -392,9 +398,8 @@ where
 {
     type Output = AxisVec<T>;
 
-    fn mul(mut self, rhs: T) -> Self::Output {
-        self.0.iter_mut().for_each(|el| *el = *el * rhs);
-        self
+    fn mul(self, rhs: T) -> Self::Output {
+        self.map(|el| el * rhs)
     }
 }
 

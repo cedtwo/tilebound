@@ -49,10 +49,10 @@ impl<Sc: Scale, Map: TileMap> Scene<Sc, Map> {
     /// practical terms, for an [`Endpoint::RIGHT`] vertex, this will return an index for the
     /// left-hand side of the intersecting *column*. Returns a [`SliceIndexError`] if no index is in
     /// bounds.
-    pub fn index_intersected<'a, A, R>(
+    pub fn index_intersected<'a, A, P>(
         &'a self,
         vertex: Vertex<A>,
-        state: &State<R>,
+        state: &State<P>,
     ) -> Result<SliceIndex<A::T>, SliceIndexError<A::T>>
     where
         A: Axis,
@@ -64,11 +64,11 @@ impl<Sc: Scale, Map: TileMap> Scene<Sc, Map> {
 
     /// Return a [`TileMapInspect`] implementing type for indices intersecting the given `index`
     /// slice. Returns a [`SliceIndexError`] if no index is in bounds.
-    pub fn inspect_index<A, R, Ins>(
+    pub fn inspect_index<A, P, Ins>(
         &self,
         index: i32,
         end: Endpoint<A::T>,
-        state: &State<R>,
+        state: &State<P>,
     ) -> Result<Ins, SliceIndexError<A>>
     where
         A: Axis,
@@ -86,10 +86,10 @@ impl<Sc: Scale, Map: TileMap> Scene<Sc, Map> {
     /// **inverted** endpoint of the given vertex index. In practical terms, for an
     /// [`Endpoint::RIGHT`] vertex, this will return a type aggregate for the left-hand side of the
     /// intersecting *column*. Returns a [`SliceIndexError`] if no index is in bounds.
-    pub fn inspect_intersected<A, R, Ins>(
+    pub fn inspect_intersected<A, P, Ins>(
         &self,
         vertex: Vertex<A>,
-        state: &State<R>,
+        state: &State<P>,
     ) -> Result<Ins, SliceIndexError<A::T>>
     where
         A: Axis,

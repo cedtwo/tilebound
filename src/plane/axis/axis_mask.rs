@@ -13,7 +13,7 @@ use crate::plane::endpoint::{Endpoint, EndpointBound};
 /// Bounds are represented as the 4 LSB, ordered by the *lower* and *upper* bounds of the `x` and
 /// `y` axes respectively. In binary, each bit represents `[_, _, _, _, down, up, right, left]`
 /// or `[_, _, _, _, bottom, top, right, left]`.
-#[derive(Default, Copy, Clone, PartialEq, Eq)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AxisMask(pub u8);
 
 impl AxisMask {

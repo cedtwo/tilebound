@@ -101,7 +101,7 @@ pub mod prelude {
 
     pub use crate::ctx::brk::Break;
     pub use crate::ctx::scene::Scene;
-    pub use crate::ctx::state::State;
+    pub use crate::ctx::state::{DetachOp, State, StatePayload, StatePayloadMut};
 
     pub use crate::view::tilemap::{TileMap, TileMapView};
 

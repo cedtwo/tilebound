@@ -26,8 +26,8 @@ impl<Store: BitStore> BitMap<Store> {
             store.len(),
             size.product(),
             "Expected a `BitVec` of exactly {}*{} bits",
-            size.x(),
-            size.y()
+            size.x,
+            size.y
         );
         Self { store, size }
     }
@@ -38,8 +38,8 @@ impl<Store: BitStore> TileMap for BitMap<Store> {
 
     fn axis_len<A: Axis>(&self) -> usize {
         match A::VALUE {
-            AxisX::VALUE => self.size.x() as usize,
-            AxisY::VALUE => self.size.y() as usize,
+            AxisX::VALUE => self.size.x as usize,
+            AxisY::VALUE => self.size.y as usize,
             _ => unreachable!(),
         }
     }
@@ -52,7 +52,7 @@ impl<Store: BitStore> TileMapView<AxisX> for BitMap<Store> {
         Self: 'a;
 
     fn view(&self, idx: usize, range: Range<usize>) -> Self::View<'_> {
-        let start = idx * self.size.y() + range.start;
+        let start = idx * self.size.y + range.start;
         let end = start + range.len();
         &self.store[start..end]
     }
@@ -69,7 +69,7 @@ impl<Store: BitStore> TileMapView<AxisY> for BitMap<Store> {
             slice: self.store.as_bitslice(),
             col_idx: idx,
             range,
-            x_len: self.size.y(),
+            x_len: self.size.y,
         }
     }
 }
