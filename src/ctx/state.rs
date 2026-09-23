@@ -275,7 +275,6 @@ impl<R> State<R> {
 
     /// Returns `true` if the given vertex [`Endpoint<A>`] intersects the given tile `index`.
     pub fn intersects_index<A: Axis, Sc: Scale>(&self, end: Endpoint<A>, index: i32) -> bool {
-        println!("target endpoint is {end:?}");
         self.index::<A, Sc>(end) == index
     }
 

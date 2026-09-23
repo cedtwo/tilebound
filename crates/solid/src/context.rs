@@ -12,7 +12,7 @@ use tilebound::topology::vertex::Vertex;
 /// # Context
 ///
 /// `Context` is a [`Scene`] wrapper exposing methods for displacement (namely [`Context::sweep_by`]
-/// and [`Context::sweep_to`]). Displacement requires a mutable reference to a rectangle [`State`]
+/// and [`Context::sweep_to`]). Displacement requires a mutable reference to a rectangle [`BoundBox`]
 /// that will be mutated with the result of displacement. See crate level documentation for
 /// examples.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
