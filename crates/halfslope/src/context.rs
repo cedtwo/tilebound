@@ -18,48 +18,8 @@ use tilebound::topology::vertex::Vertex;
 /// [`Context::attach_handler`] and [`Context::slide_handler`]). Displacement operations are exposed
 /// by calling one of the handler methods, returning a [`ContextHandler`] which exposes the
 /// [`ContextHandler::sweep_by`] and [`ContextHandler::sweep_to`] displacement methods. Displacement
-/// requires a mutable reference to a rectangle [`State`] that will be mutated with the result of
-/// displacement.
-///
-/// # Usage
-///
-/// `Context` requires a [`Scene`] (either instantiated independently, or by calling [`Context::new`])
-/// and a [`State`]. See the documentation for [`Scene`] and [`State`]
-///
-/// ```rust
-/// # use std::assert_matches;
-/// # use tilebound_halfslope::prelude::*;
-/// # #[cfg(feature = "arraymap")]
-/// # {
-/// // A 2*2 map with a single tile in the top-right triangle tile (represented as a u8 for this example).
-/// const MAP: ArrayMap<2, 2, 4, u8> = ArrayMap::new_unchecked([
-///     00, 13,
-///     00, 00
-/// ]);
-///
-/// // Declare a constant tile size (a 16 unit square).
-/// type Sc = ConSc<16>;
-/// // Declare a `Context`, passing in the map and declaring any solid map bounds.
-/// let ctx = Context::<Sc, _>::new(&MAP, AxisMask::NONE);
-///
-/// // Create a mutable bounding box. Here we define a box at the top left of `(8.0 * 8.0)` units in size.
-/// let mut rect = BoundBox::new_with_res((0.0, 0.0), (8.0, 8.0), AxisMask::NONE, VertexMask::NONE);
-///
-/// // Displace 16.0 units to the right (one exact tile) using the `Slide` handler (slides on intersecting a triangle hypotenuse).
-/// let brk = ctx.slide_handler().sweep_by::<AxisX, _>(&mut rect, 16.0);
-///
-/// assert_matches!(brk, Break::ReachedTarget); // Assert we reached the target.
-/// assert_eq!(rect.pos(), (16.0, 8.0).into()); // Assert we displaced downward on reaching the triangle tile.
-/// assert_eq!(rect.attmask(), AxisMask::NONE); // Assert we are not colliding (colliding prevents displacement).
-///
-/// // Displace 8.0 units up (half a tile) using the `Attach` handler (attaches on intersecting a triangle hypotenuse).
-/// let brk = ctx.attach_handler().sweep_by::<AxisY, _>(&mut rect, -8.0);
-///
-/// assert_matches!(brk, Break::Collision(Collision::TriangleHypotenuse)); // Assert this time we collided with the triangle hypotenuse.
-/// assert_eq!(rect.pos(), (16.0, 8.0).into()); // Assert we didn't displace at all (we were already on the hypotenuse).
-/// assert_eq!(rect.attmask(), AxisMask::TOP); // Assert we are colliding at the top.
-/// # }
-/// ```
+/// requires a mutable reference to a rectangle [`BoundBox`] that will be mutated with the result of
+/// displacement. See crate level documentation for examples.
 pub struct Context<Sc, Map>(Scene<Sc, Map>);
 
 impl<Sc, Map> Context<Sc, Map> {
