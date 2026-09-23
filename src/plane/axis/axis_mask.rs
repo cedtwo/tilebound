@@ -94,6 +94,11 @@ impl AxisMask {
         self.0 |= AxisMask::from_end::<A>(end).0;
     }
 
+    /// Clear all bits of the `AxisMask`.
+    pub fn clear(&mut self) {
+        self.0 = 0;
+    }
+
     /// Clear the bit of the given axis and `Sign`.
     pub fn clear_end<A: Axis>(&mut self, sign: Endpoint<A>) {
         self.0 &= !Self::from_end::<A>(sign).0;

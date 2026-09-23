@@ -29,12 +29,14 @@
 //! [`Axis`](prelude::Axis) | `const` axis marker types. Resolves to variables and associated view types for tilemaps.
 //! [`Scale`](prelude::Scale) | Declares a `const` integer tile size for both axes. Used for most mathematical operations.
 //! [`TileMap`](prelude::TileMap)/[`TileMapView`](prelude::TileMapView) | Exposes tilemap dimensions, view operations and associated row/column types for various array types.
+//! [`BoundBoxView`](prelude::BoundBoxView) | Variable access for `BoundBox` representations (See below).
 //!
 //! ### Types
 //!
 //! Type | Description
 //! ---|---
 //! [`Scene`](prelude::Scene) | Wraps a tilemap type with some minimal `tilebound` configuration.
+//! [`BoundBox`](prelude::BoundBox) | Bounding box and collision data representations.
 //! [`State`](prelude::State) | An intermediate used for bounding box displacement operations.
 //! [`Endpoint`](prelude::Endpoint) | Describes a direction on an axis, orientating numerical operations.
 //! [`Vertex`](topology::vertex::Vertex)/[`Edge`](topology::edge::Edge) | A bounding box `Endpoint` position for alignment and displacement.
@@ -99,9 +101,10 @@ pub mod prelude {
     pub use crate::plane::endpoint::Endpoint;
     pub use crate::plane::scale::{ConSc, Scale};
 
+    pub use crate::ctx::bnd_box::{BoundBox, BoundBoxView};
     pub use crate::ctx::brk::Break;
     pub use crate::ctx::scene::Scene;
-    pub use crate::ctx::state::{DetachOp, State, StatePayload, StatePayloadMut};
+    pub use crate::ctx::state::{DetachOp, State};
 
     pub use crate::view::tilemap::{TileMap, TileMapView};
 

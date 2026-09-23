@@ -132,7 +132,8 @@ mod tests {
         #[test]
         fn inb_to_inb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = ((0.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state = State::new::<Sc, _>(&payload);
 
             let mut tgt = state.vertex::<_, Sc>(Endpoint::RIGHT);
             tgt.translate::<Sc>(16.0);
@@ -145,7 +146,8 @@ mod tests {
         #[test]
         fn inb_to_outb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = ((0.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state = State::new::<Sc, _>(&payload);
             let mut tgt_l = state.vertex::<_, Sc>(Endpoint::LEFT);
             tgt_l.translate::<Sc>(-32.0);
             let mut tgt_r = state.vertex::<_, Sc>(Endpoint::RIGHT);
@@ -162,8 +164,10 @@ mod tests {
         #[test]
         fn outb_to_inb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = ((-32.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_l = State::new::<Sc, _>(&payload);
+            let mut state_r =
+                State::new::<Sc, _>(&((48.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ()));
             let tgt_l = Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT);
             let tgt_r = Vertex::from_pos::<Sc>(0.0, Endpoint::RIGHT);
 
@@ -178,8 +182,10 @@ mod tests {
         #[test]
         fn outb_to_outb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload_l = ((-32.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_l = State::new::<Sc, _>(&payload_l);
+            let payload_r = ((48.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_r = State::new::<Sc, _>(&payload_r);
             let tgt_l = Vertex::from_pos::<Sc>(-64.0, Endpoint::LEFT);
             let tgt_r = Vertex::from_pos::<Sc>(96.0, Endpoint::RIGHT);
 
@@ -194,7 +200,13 @@ mod tests {
         #[test]
         fn parallel_to_map() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state = State::new::<Sc>(((-16.0, -16.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = (
+                (-16.0, -16.0).into(),
+                (16.0, 16.0).into(),
+                AxisMask::NONE,
+                (),
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let tgt = Vertex::from_pos::<Sc>(48.0, Endpoint::RIGHT);
 
             let mutated = skip_to_map::<_, _, Sc, _>(tgt, &mut state, &scene);
@@ -210,7 +222,8 @@ mod tests {
         #[test]
         fn inb_to_inb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = ((0.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state = State::new::<Sc, _>(&payload);
             let tgt = Vertex::from_pos::<Sc>(32.0, Endpoint::RIGHT);
 
             let mutated = skip_from_map::<_, _, Sc, _>(tgt, &mut state, &scene);
@@ -221,7 +234,8 @@ mod tests {
         #[test]
         fn inb_to_outb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = ((0.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state = State::new::<Sc, _>(&payload);
             let tgt_l = Vertex::from_pos::<Sc>(-32.0, Endpoint::LEFT);
             let tgt_r = Vertex::from_pos::<Sc>(80.0, Endpoint::RIGHT);
 
@@ -236,8 +250,10 @@ mod tests {
         #[test]
         fn outb_to_inb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload_l = ((-32.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_l = State::new::<Sc, _>(&payload_l);
+            let payload_r = ((48.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_r = State::new::<Sc, _>(&payload_r);
             let tgt_l = Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT);
             let tgt_r = Vertex::from_pos::<Sc>(0.0, Endpoint::RIGHT);
 
@@ -252,8 +268,10 @@ mod tests {
         #[test]
         fn outb_to_outb() {
             let scene = Scene::<Sc, _>::new(ArrayMap::<3, 2, 6, _>([false; 6]), AxisMask::ALL);
-            let mut state_l = State::new::<Sc>(((-32.0, 0.0), (16.0, 16.0), AxisMask::NONE));
-            let mut state_r = State::new::<Sc>(((48.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload_l = ((-32.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_l = State::new::<Sc, _>(&payload_l);
+            let payload_r = ((48.0, 0.0).into(), (16.0, 16.0).into(), AxisMask::NONE, ());
+            let mut state_r = State::new::<Sc, _>(&payload_r);
             let tgt_l = Vertex::from_pos::<Sc>(-64.0, Endpoint::LEFT);
             let tgt_r = Vertex::from_pos::<Sc>(96.0, Endpoint::RIGHT);
 

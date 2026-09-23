@@ -1,5 +1,7 @@
+use std::fmt::Debug;
 use std::ops::Range;
 
+use crate::ctx::bnd_box::BoundBoxView;
 use crate::plane::axis::{Axis, AxisMask, AxisVec, AxisX, AxisY};
 use crate::plane::endpoint::Endpoint;
 use crate::plane::scale::Scale;
@@ -13,17 +15,56 @@ use crate::ctx::scene::Scene;
 
 /// # State
 ///
-/// Bounding box state variables for use during displacement operations.
+/// Bounding box variable intermediate for displacement operations.
 ///
-/// `State` stores bounding box variables for mutation and assertion during operations. The minimal
-/// variables needed are a bounding box top-left position, size and attachment [`AxisMask`]
-/// (referred to as *attmask*). Accepts a generic resource `R`, accessible through the [`State::res`]
-/// and [`State::res_mut`] methods to (optionally) provide additional bounding box data.
+/// `State` stores bounding box variables for mutation and assertion during operations. It uses
+/// [`Vertex`] positions for assertions (especially in relation to tile indicex), mutation,
+/// alignment and other relevant operations.
 ///
-/// Note that assertions on recent changes (eg. [`State::index_changed`]) are relative to the last call to
-/// [`State::update`]. In addition to assertions, `State` is primarily used for updating a position
-/// with [`State::set_vertex`], and attachments with [`State::attach`] and [`State::detach`]. Use
-/// [`State::pos`] or [`State::pos_vec`] to get the top/left position(s).
+/// `State` Accepts a [`BoundBoxView`] implementing type exposing bounding box position, size and
+/// attachments (usually
+/// supplied via [`BoundBox`](crate::ctx::bnd_box::BoundBox)). [`State`] (and subsequently
+/// `BoundBox`) accept a generic resource `R`, accessible through the [`State::res`] and
+/// [`State::res_mut`] methods to (optionally) provide additional data during displacement.
+///
+/// ## Example
+///
+/// ```
+/// # use tilebound::ctx::state::State;
+/// # use tilebound::ctx::bnd_box::{BoundBox, BoundBoxView};
+/// # use tilebound::plane::scale::ConSc;
+/// # use tilebound::plane::endpoint::Endpoint;
+/// # use tilebound::plane::axis::{AxisVec, AxisMask};
+/// # use tilebound::topology::vertex::Vertex;
+/// type Sc = ConSc<16>;
+/// // A bounding box of `(16.0 * 16.0)` units in size (equal to a single tile in eize).
+/// let mut bounding_box = BoundBox::new((0.0, 0.0), (16.0, 16.0), AxisMask::NONE);
+/// let mut state = State::new::<Sc, _>(&bounding_box);
+///
+/// // Assert the left and right of the bounding box is in tile index `0`.
+/// assert_eq!(state.index::<_, Sc>(Endpoint::LEFT), 0);
+/// assert_eq!(state.index::<_, Sc>(Endpoint::RIGHT), 0);
+///
+/// // Get the vertex on the right of the bounding box, and translate it by `1.0`.
+/// let mut vertex = state.vertex::<_, Sc>(Endpoint::RIGHT);
+/// vertex.translate::<Sc>(1.0);
+///
+/// // Update the state and check the right of the bounding box is now in tile index `1`.
+/// state.set_vertex(vertex);
+/// assert_eq!(state.index::<_, Sc>(Endpoint::RIGHT), 1);
+///
+/// // Commit changes back to the state and assert the new position.
+/// state.apply::<Sc, _>(&mut bounding_box);
+/// assert_eq!(bounding_box.pos(), AxisVec::new(1.0, 0.0));
+/// ```
+///
+/// As demonstrated above, `State` is primarily used for updating a position with
+/// [`State::set_vertex`], while attachments are set with[`State::attach`] and [`State::detach`].
+/// Use [`State::pos`] or [`State::pos_vec`] to get the top/left position(s).
+///
+/// Note that `State` stores the last vertices (`last_verts`) for assertions on recent changes
+/// (eg. [`State::index_changed`]). These variables are set at instantiation and updated with
+/// [`State::update`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct State<R = ()> {
     /// The current position and size.
@@ -37,20 +78,21 @@ pub struct State<R = ()> {
 }
 
 impl<R> State<R> {
-    /// Create a new `State`. Requires a tuple containing an *x* and *y* axis position, the lengths
-    /// on either axis, and a collision [`AxisMask`]. See [`StatePayload`] for tuple patterns.
-    pub fn new<Sc: Scale>(payload: impl StatePayload<R>) -> Self
+    /// Create a new `State` from a [`BoundBoxView`] implementing type. See [`State`] and
+    /// [`BoundBox`] documentation for examples.
+    pub fn new<'a, Sc, P>(payload: &P) -> Self
     where
-        R: Default,
+        Sc: Scale,
+        R: Clone,
+        P: BoundBoxView<R = R>,
     {
-        let (pos, len, attmask, res) = payload.split_payload();
-        let curr_edges = Self::bounding_box::<Sc>(pos, len);
+        let curr_edges = Self::bounding_box::<Sc>(payload.pos(), payload.len());
         let last_verts = curr_edges.map(|e| e.take_vertex());
         Self {
             curr_edges,
-            curr_attmask: attmask,
+            curr_attmask: payload.attmask(),
             last_verts,
-            res,
+            res: payload.res().clone(),
         }
     }
 
@@ -325,10 +367,17 @@ impl<R> State<R> {
         self.last_verts = self.curr_edges.map(|edge| edge.inbound_vertex());
     }
 
-    /// Consume the `State`, apply all changes. Requires a tuple containing mutable *x* and *y* axis
-    /// positions and a mutable collision [`AxisMask`]. See [`StatePayloadMut`] for tuple patterns.
-    pub fn apply<Sc: Scale>(self, mut payload: impl StatePayloadMut<R>) {
-        payload.apply::<Sc>(self);
+    /// Consumes the `State`, committing changes back to a [`BoundBoxView`] implementing type. See
+    /// [`State`] and [`BoundBox`](super::bnd_box::BoundBox) documentation for examples.
+    pub fn apply<Sc, P>(self, payload: &mut P)
+    where
+        Sc: Scale,
+        R: Clone,
+        P: BoundBoxView<R = R>,
+    {
+        *payload.pos_mut() = self.pos_vec::<Sc>();
+        *payload.attmask_mut() = self.attmask();
+        *payload.res_mut() = self.res().clone();
     }
 }
 
@@ -346,231 +395,9 @@ pub enum DetachOp {
     CheckNextTiles,
 }
 
-/// # StatePayload
-///
-/// State instantiation payload ([`State::new`]). Implemented on `(position, size, attmask, resource)`
-/// tuples where each variables is represented as follows:
-/// - `position`: "`f32, f32,`", "`(f32, f32),`" or "`AxisVec<f32>,`",
-/// - `size`: "`f32, f32,`", "`(f32, f32),`" or "`AxisVec<f32>,`",
-/// - `attmask`: `AxisMask,`,
-/// - `resource`: "`R`" for the generic `R` in [`State<R>`], or omitted if [`State<()>`].
-/// Alternatively, implement [`StatePayload`] on your type.
-///
-/// ## Example
-/// ```
-/// # use tilebound::ctx::state::{State};
-/// # use tilebound::plane::scale::{ConSc};
-/// # use tilebound::plane::axis::{AxisMask, AxisVec};
-/// # type Sc = ConSc<16>;
-/// #
-/// let (mut x, mut y) = (0.0, 0.0);
-/// let (x_len, y_len) = (16.0, 16.0);
-/// let mut mask = AxisMask::NONE;
-/// // Valid tuple payloads.
-/// let from_vars = (x, y, x_len, y_len, mask);
-/// # let _ = State::new::<Sc>(from_vars);
-/// let from_tuples = ((x, y), (x_len, y_len), mask);
-/// # let _ = State::new::<Sc>(from_tuples);
-/// let from_vecs = (AxisVec::new(x, y), AxisVec::new(x_len, y_len), mask);
-/// # let _ = State::new::<Sc>(from_vecs);
-/// // Where usng a bool resource (`State<bool>`).
-/// let from_tuples_with_res = ((x, y), (x_len, y_len), mask, true);
-/// # let _ = State::<bool>::new::<Sc>(from_tuples_with_res);
-/// ```
-pub trait StatePayload<R> {
-    /// Split the payload into a tuple containing the respective `f32` position, size and resource
-    /// (if any).
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, R);
-}
-
-impl StatePayload<()> for (f32, f32, f32, f32, AxisMask) {
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, ()) {
-        ((self.0, self.1).into(), (self.2, self.3).into(), self.4, ())
-    }
-}
-
-impl StatePayload<()> for (AxisVec<f32>, AxisVec<f32>, AxisMask) {
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, ()) {
-        (self.0, self.1, self.2, ())
-    }
-}
-
-impl StatePayload<()> for ((f32, f32), (f32, f32), AxisMask) {
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, ()) {
-        (self.0.into(), self.1.into(), self.2, ())
-    }
-}
-
-impl<R> StatePayload<R> for (f32, f32, f32, f32, AxisMask, R) {
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, R) {
-        (
-            (self.0, self.1).into(),
-            (self.2, self.3).into(),
-            self.4,
-            self.5,
-        )
-    }
-}
-
-impl<R> StatePayload<R> for (AxisVec<f32>, AxisVec<f32>, AxisMask, R) {
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, R) {
-        (self.0, self.1, self.2, self.3)
-    }
-}
-
-impl<R> StatePayload<R> for ((f32, f32), (f32, f32), AxisMask, R) {
-    fn split_payload(self) -> (AxisVec<f32>, AxisVec<f32>, AxisMask, R) {
-        (self.0.into(), self.1.into(), self.2, self.3)
-    }
-}
-
-/// # StatePayloadMut
-///
-/// State mutation payload ([`State::apply`]). Implemented on `(position, attmask, resource)` tuples
-/// where each variables is represented as follows:
-/// - `position`: "`&mut f32, &mut f32,`", "`(&mut f32, &mut f32),`" "`&mut (f32, f32),`",
-/// "`AxisVec<&mut f32>,`" or "`&mut AxisVec<f32>,`",
-/// - `attmask`: "`&mut AxisMask,`",
-/// - `resource`: "`&mut R`" for the generic `R` in [`State<R>`], or omitted if [`State<()>`].
-/// Alternatively, implement [`StatePayloadMut`] on your type.
-///
-/// ## Example
-/// ```
-/// # use tilebound::ctx::state::{State};
-/// # use tilebound::plane::scale::{ConSc};
-/// # use tilebound::plane::axis::{AxisMask, AxisVec};
-/// # type Sc = ConSc<16>;
-/// # let state = State::new::<Sc>((0.0, 0.0, 16.0, 16.0, AxisMask::NONE));
-/// # let state_with_bool = State::new::<Sc>((0.0, 0.0, 16.0, 16.0, AxisMask::NONE, true));
-/// #
-/// let mut mask = AxisMask::NONE;
-///
-/// // Mutate individual fields.
-/// let (mut x, mut y) = (0.0, 0.0);
-///
-/// let from_vars = (&mut x, &mut y, &mut mask);
-/// # state.apply::<Sc>(from_vars);
-/// let from_tuples = ((&mut x, &mut y), &mut mask);
-/// # state.apply::<Sc>(from_tuples);
-/// let from_vecs = (AxisVec::new(&mut x, &mut y), &mut mask);
-/// # state.apply::<Sc>(from_vecs);
-///
-/// // Mutate struct/tuple fields.
-/// let mut pos_tuple  = (0.0, 0.0);
-/// let mut pos_vec = AxisVec::new(0.0, 0.0);
-///
-/// let from_mut_tuples = (&mut pos_tuple, &mut mask);
-/// # state.apply::<Sc>(from_mut_tuples);
-/// let from_mut_vecs = (&mut pos_vec, &mut mask);
-/// # state.apply::<Sc>(from_mut_vecs);
-///
-/// // Append the resource to the end (in this case, the generic `bool` in `State<bool>`).
-/// let mut flag = false;
-/// let from_tuples_with_res = ((&mut x, &mut y), &mut mask, &mut flag);
-/// # state_with_bool.apply::<Sc>(from_tuples_with_res);
-/// ```
-pub trait StatePayloadMut<R> {
-    /// Apply the changes in [`State`] to the tuple variables. Consumes `state`.
-    fn apply<Sc: Scale>(&mut self, state: State<R>);
-}
-
-impl StatePayloadMut<()> for (&mut f32, &mut f32, &mut AxisMask) {
-    fn apply<Sc: Scale>(&mut self, state: State<()>) {
-        let pos = state.pos_vec::<Sc>();
-        *self.0 = pos.x;
-        *self.1 = pos.y;
-        *self.2 = state.curr_attmask;
-    }
-}
-
-impl StatePayloadMut<()> for (AxisVec<&mut f32>, &mut AxisMask) {
-    fn apply<Sc: Scale>(&mut self, state: State<()>) {
-        let pos = state.pos_vec::<Sc>();
-        **self.0.x_mut() = pos.x;
-        **self.0.y_mut() = pos.y;
-        *self.1 = state.curr_attmask;
-    }
-}
-
-impl StatePayloadMut<()> for (&mut AxisVec<f32>, &mut AxisMask) {
-    fn apply<Sc: Scale>(&mut self, state: State<()>) {
-        let pos = state.pos_vec::<Sc>();
-        *self.0.x_mut() = pos.x;
-        *self.0.y_mut() = pos.y;
-        *self.1 = state.curr_attmask;
-    }
-}
-
-impl StatePayloadMut<()> for ((&mut f32, &mut f32), &mut AxisMask) {
-    fn apply<Sc: Scale>(&mut self, state: State<()>) {
-        let pos = state.pos_vec::<Sc>();
-        *self.0.0 = pos.x;
-        *self.0.1 = pos.y;
-        *self.1 = state.curr_attmask;
-    }
-}
-
-impl StatePayloadMut<()> for (&mut (f32, f32), &mut AxisMask) {
-    fn apply<Sc: Scale>(&mut self, state: State<()>) {
-        let pos = state.pos_vec::<Sc>();
-        self.0.0 = pos.x;
-        self.0.1 = pos.y;
-        *self.1 = state.curr_attmask;
-    }
-}
-
-impl<R> StatePayloadMut<R> for (&mut f32, &mut f32, &mut AxisMask, &mut R) {
-    fn apply<Sc: Scale>(&mut self, state: State<R>) {
-        let pos = state.pos_vec::<Sc>();
-        *self.0 = pos.x;
-        *self.1 = pos.y;
-        *self.2 = state.curr_attmask;
-        *self.3 = state.res;
-    }
-}
-
-impl<R> StatePayloadMut<R> for (AxisVec<&mut f32>, &mut AxisMask, &mut R) {
-    fn apply<Sc: Scale>(&mut self, state: State<R>) {
-        let pos = state.pos_vec::<Sc>();
-        **self.0.x_mut() = pos.x;
-        **self.0.y_mut() = pos.y;
-        *self.1 = state.curr_attmask;
-        *self.2 = state.res;
-    }
-}
-
-impl<R> StatePayloadMut<R> for (&mut AxisVec<f32>, &mut AxisMask, &mut R) {
-    fn apply<Sc: Scale>(&mut self, state: State<R>) {
-        let pos = state.pos_vec::<Sc>();
-        *self.0.x_mut() = pos.x;
-        *self.0.y_mut() = pos.y;
-        *self.1 = state.curr_attmask;
-        *self.2 = state.res;
-    }
-}
-
-impl<R> StatePayloadMut<R> for ((&mut f32, &mut f32), &mut AxisMask, &mut R) {
-    fn apply<Sc: Scale>(&mut self, state: State<R>) {
-        let pos = state.pos_vec::<Sc>();
-        *self.0.0 = pos.x;
-        *self.0.1 = pos.y;
-        *self.1 = state.curr_attmask;
-        *self.2 = state.res;
-    }
-}
-
-impl<R> StatePayloadMut<R> for (&mut (f32, f32), &mut AxisMask, &mut R) {
-    fn apply<Sc: Scale>(&mut self, state: State<R>) {
-        let pos = state.pos_vec::<Sc>();
-        self.0.0 = pos.x;
-        self.0.1 = pos.y;
-        *self.1 = state.curr_attmask;
-        *self.2 = state.res;
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::ctx::bnd_box::BoundBox;
     use crate::plane::scale::ConSc;
 
     use super::*;
@@ -578,91 +405,42 @@ mod tests {
     type Sc = ConSc<16>;
 
     #[test]
-    fn apply_state_to_vars() {
-        let state: State<()> = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL))
-            .with_last_pos::<Sc>((-10.0, 10.0));
-        let state_with_res = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL, true));
-        let mut x = std::array::repeat::<f32, 6>(0.0);
-        let mut y = std::array::repeat::<f32, 6>(0.0);
-        let mut mask = std::array::repeat::<AxisMask, 6>(AxisMask::NONE);
-        let mut res = std::array::repeat::<bool, 3>(false);
-
-        // Without resources:
-        (&mut x[0], &mut y[0], &mut mask[0]).apply::<Sc>(state);
-        ((&mut x[1], &mut y[1]), &mut mask[1]).apply::<Sc>(state);
-        (AxisVec::new(&mut x[2], &mut y[2]), &mut mask[2]).apply::<Sc>(state);
-        // With resources:
-        (&mut x[3], &mut y[3], &mut mask[3], &mut res[0]).apply::<Sc>(state_with_res);
-        ((&mut x[4], &mut y[4]), &mut mask[4], &mut res[1]).apply::<Sc>(state_with_res);
-        #[rustfmt::skip]
-        (AxisVec::new(&mut x[5], &mut y[5]), &mut mask[5], &mut res[2]).apply::<Sc>(state_with_res);
-
-        assert!(x.iter().all(|x| *x == 1.0));
-        assert!(y.iter().all(|x| *x == 2.0));
-        assert!(mask.iter().all(|mask| mask.all()));
-        assert!(res.iter().all(|b| *b));
-    }
-
-    #[test]
-    fn apply_state_to_wrappers() {
-        let state: State<()> = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL))
-            .with_last_pos::<Sc>((-10.0, 10.0));
-        let state_with_res = State::new::<Sc>(((1.0, 2.0), (1.0, 1.0), AxisMask::ALL, true));
-        let mut pos_tuple = std::array::repeat::<(f32, f32), 2>((0.0, 0.0));
-        let mut pos_vec = std::array::repeat::<AxisVec<f32>, 2>(AxisVec::new(0.0, 0.0));
-        let mut mask = std::array::repeat::<AxisMask, 4>(AxisMask::NONE);
-        let mut res = std::array::repeat::<bool, 2>(false);
-
-        // Without resources:
-        (&mut pos_tuple[0], &mut mask[0]).apply::<Sc>(state);
-        (&mut pos_vec[0], &mut mask[1]).apply::<Sc>(state);
-        // With resources:
-        (&mut pos_tuple[1], &mut mask[2], &mut res[0]).apply::<Sc>(state_with_res);
-        (&mut pos_vec[1], &mut mask[3], &mut res[1]).apply::<Sc>(state_with_res);
-
-        assert!(pos_tuple.iter().all(|pos| *pos == (1.0, 2.0)));
-        assert!(pos_vec.iter().all(|pos| *pos == AxisVec::new(1.0, 2.0)));
-        assert!(mask.iter().all(|mask| mask.all()));
-        assert!(res.iter().all(|b| *b));
-    }
-
-    #[test]
     fn with_last_position() {
-        let state0: State<()> = State::new::<Sc>(((0.0, 0.0), (1.0, 1.0), AxisMask::NONE))
-            .with_last_pos::<Sc>((-10.0, 10.0));
-        let state1: State<()> = State::new::<Sc>(((0.0, 0.0), (1.0, 1.0), AxisMask::NONE))
-            .with_last_pos::<Sc>((10.0, -10.0));
+        let payload_0 = BoundBox::new((0.0, 0.0), (1.0, 1.0), AxisMask::NONE);
+        let state_0: State<()> = State::new::<Sc, _>(&payload_0).with_last_pos::<Sc>((-10.0, 10.0));
+        let payload_1 = BoundBox::new((0.0, 0.0), (1.0, 1.0), AxisMask::NONE);
+        let state_1: State<()> = State::new::<Sc, _>(&payload_1).with_last_pos::<Sc>((10.0, -10.0));
 
         assert_eq!(
-            state0.curr_edges.x.inbound_vertex().cast::<AxisX>(),
+            state_0.curr_edges.x.inbound_vertex().cast::<AxisX>(),
             Vertex::from_pos::<Sc>(1.0, Endpoint::RIGHT)
         );
         assert_eq!(
-            state0.last_verts.x.cast::<AxisX>(),
+            state_0.last_verts.x.cast::<AxisX>(),
             Vertex::from_pos::<Sc>(-10.0, Endpoint::RIGHT)
         );
         assert_eq!(
-            state0.curr_edges.y.inbound_vertex().cast::<AxisY>(),
+            state_0.curr_edges.y.inbound_vertex().cast::<AxisY>(),
             Vertex::from_pos::<Sc>(0.0, Endpoint::TOP)
         );
         assert_eq!(
-            state0.last_verts.y.cast::<AxisY>(),
+            state_0.last_verts.y.cast::<AxisY>(),
             Vertex::from_pos::<Sc>(10.0, Endpoint::TOP)
         );
         assert_eq!(
-            state1.curr_edges.x.inbound_vertex().cast::<AxisX>(),
+            state_1.curr_edges.x.inbound_vertex().cast::<AxisX>(),
             Vertex::from_pos::<Sc>(0.0, Endpoint::LEFT)
         );
         assert_eq!(
-            state1.last_verts.x.cast::<AxisX>(),
+            state_1.last_verts.x.cast::<AxisX>(),
             Vertex::from_pos::<Sc>(10.0, Endpoint::LEFT)
         );
         assert_eq!(
-            state1.curr_edges.y.inbound_vertex().cast::<AxisY>(),
+            state_1.curr_edges.y.inbound_vertex().cast::<AxisY>(),
             Vertex::from_pos::<Sc>(1.0, Endpoint::BOTTOM)
         );
         assert_eq!(
-            state1.last_verts.y.cast::<AxisY>(),
+            state_1.last_verts.y.cast::<AxisY>(),
             Vertex::from_pos::<Sc>(-10.0, Endpoint::BOTTOM)
         );
     }
