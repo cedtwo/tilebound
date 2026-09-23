@@ -1,8 +1,8 @@
-# Tilebound
+## Tilebound
 
 A framework for resolving tilemap collisions.
 
-## Summary
+### Summary
 
 `tilebound` is a library of types, representations and operations for handling and resolving
 bounding-box displacement and collision on a 2d array. `tilebound` includes:
@@ -17,34 +17,37 @@ other offsetting (with respect to the limits of floating-point accuracy),
 axes (if desired) while reducing testing to a single axis,
 - Implementations that demonstrate a workflow with `macroquad` examples.
 
-## Core Traits and Types
+### Core Traits and Types
 
 The following are some core traits and types prevalent throughout this crate. See the individual
 type documentation for more.
 
-### Traits
+#### Traits
 
 Type | Description
 ---|---
 [`Axis`](prelude::Axis) | `const` axis marker types. Resolves to variables and associated view types for tilemaps.
 [`Scale`](prelude::Scale) | Declares a `const` integer tile size for both axes. Used for most mathematical operations.
 [`TileMap`](prelude::TileMap)/[`TileMapView`](prelude::TileMapView) | Exposes tilemap dimensions, view operations and associated row/column types for various array types.
+[`BoundBoxView`](prelude::BoundBoxView) | Variable access for `BoundBox` representations (See below).
 
-### Types
+#### Types
 
 Type | Description
 ---|---
 [`Scene`](prelude::Scene) | Wraps a tilemap type with some minimal `tilebound` configuration.
+[`BoundBox`](prelude::BoundBox) | Bounding box and collision data representations.
 [`State`](prelude::State) | An intermediate used for bounding box displacement operations.
-[`Vertex`](topology::vertex::Vertex)/[`Edge`](topology::edge::Edge)/[`Endpoint`](prelude::Endpoint) | Bounding box position alignment, orientation, displacement and indices.
+[`Endpoint`](prelude::Endpoint) | Describes a direction on an axis, orientating numerical operations.
+[`Vertex`](topology::vertex::Vertex)/[`Edge`](topology::edge::Edge) | A bounding box `Endpoint` position for alignment and displacement.
 [`Delta`](ctx::delta::Delta) | Steps over a delta from an *origin* to a *target* producing vertex positions.
 [`Break`](ctx::brk::Break) | A simple enum return type for displacement operations and control-flow, possibly including collision data.
 
-### Helper operations
+#### Helper operations
 
 `tilebound` further includes various helper functions to simplify common workflows (See [`ops`]).
 
-## Usage
+### Usage
 
 `tilebound` provides operations to simplify single-axis displacement on a tilemap. It was build
 with the core goal of sweeping over a delta, only checking the tilemap on-demand (where
@@ -64,7 +67,7 @@ large number of these common optimizations are included in the [`ops`] module.
 in barely over 200 lines (including documentation). `tilebound_halfslope` implements the same
 workflow however is significantly more complex. See [implementations](#implementations) below.
 
-## Implementations
+### Implementations
 
 The following crates include feature-complete (but experimental) `tilebound` implementations:
 
@@ -73,7 +76,7 @@ Name | Description
 [`tilebound_solid`](https://crates.io/crates/tilebound_solid) | A small boolean/bit tilemap collision libary and a simple example of `tilebound` usage.
 [`tilebound_halfslope`](https://crates.io/crates/tilebound_halfslope) | A tilemap collision libary supporting slopes and one-way tiles of any orientation.
 
-## Features
+### Features
 
 `tilebound` exposes various [`TileMap`](view::tilemap::TileMap) and [`TileMapView`](view::tilemap::TileMapView)
 implementations as optional features.
