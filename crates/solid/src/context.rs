@@ -13,45 +13,8 @@ use tilebound::topology::vertex::Vertex;
 ///
 /// `Context` is a [`Scene`] wrapper exposing methods for displacement (namely [`Context::sweep_by`]
 /// and [`Context::sweep_to`]). Displacement requires a mutable reference to a rectangle [`State`]
-/// that will be mutated with the result of displacement.
-///
-/// # Usage
-///
-/// `Context` requires a [`Scene`] (either instantiated independently, or by calling [`Context::new`])
-/// and a [`State`]. See the documentation for [`Scene`] and [`State`]
-///
-/// ```rust
-/// # use std::assert_matches;
-/// # use tilebound_solid::prelude::*;
-/// # #[cfg(feature = "arraymap")]
-/// # {
-/// // A 2*2 map with a single solid tile in the top-right.
-/// const MAP: ArrayMap<2, 2, 4, u8> = ArrayMap::new_unchecked([
-///     0, 1,
-///     0, 0
-/// ]);
-///
-/// // Declare a constant tile size (a 16 unit square).
-/// type Sc = ConSc<16>;
-/// // Declare a `Context`, passing in the map and declaring any solid map bounds.
-/// let ctx = Context::<Sc, _>::new(&MAP, AxisMask::NONE);
-///
-/// // Create a mutable bounding box. Here we define a box at the top left of `(8.0 * 8.0)` units in size.
-/// let mut rect = BoundBox::new((0.0, 0.0), (8.0, 8.0), AxisMask::NONE);
-///
-/// let brk = ctx.sweep_by::<AxisX, _>(&mut rect, 16.0); // Displace 16.0 units to the right (one exact tile).
-///
-/// assert_matches!(brk, Break::Collision(_)); // Assert we collided.
-/// assert_eq!(rect.pos(), (8.0, 0.0).into()); // Assert we displaced only 8 units to the right.
-/// assert_eq!(rect.attmask(), AxisMask::RIGHT); // Assert we are colliding on the right.
-///
-/// let brk = ctx.sweep_by::<AxisY, _>(&mut rect, 16.0); // Displace 16.0 units down (one exact tile).
-///
-/// assert_matches!(brk, Break::ReachedTarget); // Assert we reached the target.
-/// assert_eq!(rect.pos(), (8.0, 16.0).into()); // Assert we displaced all 16 units down.
-/// assert_eq!(rect.attmask(), AxisMask::NONE); // Assert we are no longer colliding on the right.
-/// # }
-/// ```
+/// that will be mutated with the result of displacement. See crate level documentation for
+/// examples.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Context<Sc, Map>(Scene<Sc, Map>);
 
