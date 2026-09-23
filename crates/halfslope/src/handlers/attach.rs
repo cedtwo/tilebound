@@ -161,12 +161,13 @@ mod tests {
 
         #[test]
         fn before_tri_hypotenuse() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 2.0),
                 (Sc::SCALE, Sc::SCALE),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
@@ -181,12 +182,13 @@ mod tests {
 
         #[test]
         fn before_wedge_hypotenuse() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 2.0),
                 (Sc::SCALE, Sc::SCALE * 2.0),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
@@ -206,12 +208,13 @@ mod tests {
 
         #[test]
         fn on_tri_vertex() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 0.0),
                 (Sc::SCALE, Sc::SCALE),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
@@ -234,12 +237,13 @@ mod tests {
 
         #[test]
         fn on_tri_hypotenuse() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 2.0),
                 (Sc::SCALE, Sc::SCALE),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extreme(0, 0..1, Endpoint::TOP, Endpoint::RIGHT);
@@ -254,12 +258,13 @@ mod tests {
 
         #[test]
         fn on_lower_wedge_vertex() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 0.0),
                 (Sc::SCALE, 47.0),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
@@ -282,12 +287,13 @@ mod tests {
 
         #[test]
         fn on_upper_wedge_vertex() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 1.0),
                 (Sc::SCALE, 47.0),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
@@ -310,12 +316,13 @@ mod tests {
 
         #[test]
         fn on_wedge_vertices() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 0.0),
                 (Sc::SCALE, Sc::SCALE * 3.0),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
@@ -338,12 +345,13 @@ mod tests {
 
         #[test]
         fn on_lower_wedge_hypotenuse() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 4.0),
                 (Sc::SCALE, Sc::SCALE * 2.0),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
@@ -358,12 +366,13 @@ mod tests {
 
         #[test]
         fn on_upper_wedge_hypotenuse() {
-            let mut state = State::new::<Sc>((
+            let payload = BoundBox::new_with_res(
                 (16.0, 12.0),
                 (Sc::SCALE, Sc::SCALE * 2.0),
                 AxisMask::NONE,
                 VertexMask::NONE,
-            ));
+            );
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(&EMPTY, AxisMask::NONE);
 
             let edges = EdgeRange::<AxisY>::extremes(0, 0..3, Endpoint::UPPER);
