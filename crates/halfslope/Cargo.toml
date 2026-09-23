@@ -12,8 +12,7 @@ categories = ["game-development"]
 
 [dependencies]
 marker_value = { version = "0.1.0" }
-tilebound = { path = "../../" }
-# tilebound = { version = "0.2.0" }
+tilebound = { version = "0.3.0" }
 bitvec = "1.1.1"
 
 [dev-dependencies]
