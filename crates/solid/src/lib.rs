@@ -36,6 +36,7 @@
 //! ```
 mod context;
 
+// mod bnd_box;
 mod collision;
 mod tile;
 
@@ -45,6 +46,7 @@ pub mod prelude {
 
     pub type State = tilebound::prelude::State<()>;
 
+    // pub use crate::bnd_box::BoundBox;
     pub use crate::collision::{Collision, TileRange};
     pub use crate::context::Context;
     pub use crate::tile::SolidTile;

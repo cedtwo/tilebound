@@ -6,6 +6,7 @@ use tilebound::ctx::brk::Break;
 use tilebound::ctx::state::DetachOp;
 use tilebound::ops::*;
 use tilebound::prelude::*;
+use tilebound::topology::delta::Delta;
 use tilebound::topology::vertex::Vertex;
 
 /// # Context
@@ -35,28 +36,20 @@ use tilebound::topology::vertex::Vertex;
 /// // Declare a `Context`, passing in the map and declaring any solid map bounds.
 /// let ctx = Context::<Sc, _>::new(&MAP, AxisMask::NONE);
 ///
-/// // Declare our rectangle variables.
-/// let size = (8.0, 8.0); // An 8*8 unit square.
-/// let mut pos = (0.0, 0.0); // Positions the top-left of the rectangle in the top-left of the map.
-/// let mut attmask = AxisMask::NONE; // An AxisMask for representing collisions.
+/// // Create a mutable bounding box. Here we define a box at the top left of `(8.0 * 8.0)` units in size.
+/// let mut rect = BoundBox::new((0.0, 0.0), (8.0, 8.0), AxisMask::NONE);
 ///
-/// // Create a state from our collider variables.
-/// let mut state = State::new::<Sc>((pos, size, attmask));
-///
-/// let brk = ctx.sweep_by::<AxisX>(&mut state, 16.0); // Displace 16.0 units to the right (one exact tile).
+/// let brk = ctx.sweep_by::<AxisX, _>(&mut rect, 16.0); // Displace 16.0 units to the right (one exact tile).
 ///
 /// assert_matches!(brk, Break::Collision(_)); // Assert we collided.
-/// assert_eq!(state.pos_vec::<Sc>(), (8.0, 0.0).into()); // Assert we displaced only 8 units to the right.
-/// assert_eq!(state.attmask(), AxisMask::RIGHT); // Assert we are colliding on the right.
+/// assert_eq!(rect.pos(), (8.0, 0.0).into()); // Assert we displaced only 8 units to the right.
+/// assert_eq!(rect.attmask(), AxisMask::RIGHT); // Assert we are colliding on the right.
 ///
-/// let brk = ctx.sweep_by::<AxisY>(&mut state, 16.0); // Displace 16.0 units down (one exact tile).
+/// let brk = ctx.sweep_by::<AxisY, _>(&mut rect, 16.0); // Displace 16.0 units down (one exact tile).
 ///
 /// assert_matches!(brk, Break::ReachedTarget); // Assert we reached the target.
-/// assert_eq!(state.pos_vec::<Sc>(), (8.0, 16.0).into()); // Assert we displaced all 16 units down.
-/// assert_eq!(state.attmask(), AxisMask::NONE); // Assert we are no longer colliding on the right.
-///
-/// // Apply changes back to our variables.
-/// state.apply::<Sc>((&mut pos, &mut attmask));
+/// assert_eq!(rect.pos(), (8.0, 16.0).into()); // Assert we displaced all 16 units down.
+/// assert_eq!(rect.attmask(), AxisMask::NONE); // Assert we are no longer colliding on the right.
 /// # }
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,47 +93,58 @@ impl<Sc, Map> Context<Sc, Map> {
 }
 
 impl<Sc: Scale, Map: TileMap> Context<Sc, Map> {
-    /// Attempt to displace the collider by the given `delta`, checking all intersecting tiles of
-    /// the delta. Where colliding with a tilebound, returns a [`TileRange`] on the **transpose**
-    /// axis (eg. returns a *y* axis *column* when displacing and colliding on the *x* axis).
-    pub fn sweep_by<A: Axis>(&self, state: &mut State, delta: f32) -> Break<Collision<A::T>>
+    /// Attempt to displace the given [`BoundBox`] by the given `delta`, checking all
+    /// intersecting tiles of the delta. Returns a [`TileRange`] on collision with a tile.
+    pub fn sweep_by<'a, A: Axis, P: BoundBoxView<R = ()>>(
+        &self,
+        bbox: &mut BoundBox<'a, P>,
+        delta: f32,
+    ) -> Break<Collision<A::T>>
     where
         Map: TileMapView<A, El: SolidTile>,
         Map: TileMapView<A::T, El: SolidTile>,
     {
-        let Some(delta) = delta_by::<A, Sc, _>(state, delta) else {
+        let mut state = State::new::<Sc, _>(bbox);
+        let Some(delta) = delta_by::<A, Sc, _>(&state, delta) else {
             return Break::None;
         };
         state.detach::<A>();
-        loop_outer_delta(
-            delta,
-            state,
-            &self.0,
-            Self::handle_vertex,
-            Self::update::<A>,
-        )
+        Self::loop_delta(bbox, delta, &mut state, &self.0)
     }
 
-    /// Attempt to displace the nearest collider edge to the given position, checking all
-    /// intersected tiles along the delta. Where colliding with a tilebound, returns a [`TileRange`]
-    /// on the **transpose** axis (eg. returns a *y* axis *column* when displacing and colliding
-    /// on the *x* axis).
-    pub fn sweep_to<A: Axis>(&self, state: &mut State, pos: f32) -> Break<Collision<A::T>>
+    /// Attempt to displace the nearest [`BoundBox`] edge to the given position, checking all
+    /// intersected tiles along the delta. Returns a [`TileRange`] on collision with a tile.
+    pub fn sweep_to<'a, A: Axis, P: BoundBoxView<R = ()>>(
+        &self,
+        bbox: &mut BoundBox<'a, P>,
+        pos: f32,
+    ) -> Break<Collision<A::T>>
     where
         Map: TileMapView<A, El: SolidTile>,
         Map: TileMapView<A::T, El: SolidTile>,
     {
-        let Some(delta) = delta_to::<A, Sc, _>(state, pos) else {
+        let mut state = State::new::<Sc, _>(bbox);
+        let Some(delta) = delta_to::<A, Sc, _>(&state, pos) else {
             return Break::None;
         };
         state.detach::<A>();
-        loop_outer_delta(
-            delta,
-            state,
-            &self.0,
-            Self::handle_vertex,
-            Self::update::<A>,
-        )
+        Self::loop_delta(bbox, delta, &mut state, &self.0)
+    }
+
+    /// Loops over the delta, commiting changes back to the [`BoundBox`] and returning the result.
+    pub fn loop_delta<'a, A: Axis, P: BoundBoxView<R = ()>>(
+        bbox: &mut BoundBox<'a, P>,
+        delta: Delta<A>,
+        state: &mut State,
+        scene: &Scene<Sc, Map>,
+    ) -> Break<Collision<A::T>>
+    where
+        Map: TileMapView<A, El: SolidTile>,
+        Map: TileMapView<A::T, El: SolidTile>,
+    {
+        let brk = loop_outer_delta(delta, state, scene, Self::handle_vertex, Self::update::<A>);
+        state.apply::<Sc, _>(bbox);
+        brk
     }
 
     /// Perform assertions on the [`State`] and [`Vertex`] target before passing to a displacement
@@ -251,7 +255,8 @@ mod tests {
 
         #[test]
         fn map_bound() {
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = BoundBox::new((0.0, 0.0), (16.0, 16.0), AxisMask::NONE);
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::ALL);
 
             let tgt = Vertex::<AxisX>::from_pos::<Sc>(-1.0, Endpoint::LOWER);
@@ -263,7 +268,8 @@ mod tests {
 
         #[test]
         fn no_map_bound() {
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = BoundBox::new((0.0, 0.0), (16.0, 16.0), AxisMask::NONE);
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::NONE);
 
             let tgt = Vertex::<AxisX>::from_pos::<Sc>(-1.0, Endpoint::LOWER);
@@ -275,7 +281,8 @@ mod tests {
 
         #[test]
         fn intersect() {
-            let mut state = State::new::<Sc>(((0.0, 0.0), (15.0, 16.0), AxisMask::NONE));
+            let payload = BoundBox::new((0.0, 0.0), (15.0, 16.0), AxisMask::NONE);
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::ALL);
 
             let tgt = Vertex::<AxisX>::from_pos::<Sc>(16.0, Endpoint::UPPER);
@@ -287,7 +294,8 @@ mod tests {
 
         #[test]
         fn next_tile() {
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = BoundBox::new((0.0, 0.0), (16.0, 16.0), AxisMask::NONE);
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(ArrayMap::<2, 2, 4, _>([false; 4]), AxisMask::ALL);
 
             let tgt = Vertex::<AxisX>::from_pos::<Sc>(17.0, Endpoint::UPPER);
@@ -304,7 +312,8 @@ mod tests {
                 false, true,
                 false, true
             ]);
-            let mut state = State::new::<Sc>(((0.0, 0.0), (16.0, 16.0), AxisMask::NONE));
+            let payload = BoundBox::new((0.0, 0.0), (16.0, 16.0), AxisMask::NONE);
+            let mut state = State::new::<Sc, _>(&payload);
             let scene = Scene::<Sc, _>::new(map, AxisMask::ALL);
 
             let tgt = Vertex::<AxisX>::from_pos::<Sc>(17.0, Endpoint::UPPER);
@@ -325,12 +334,8 @@ mod tests {
 
         #[test]
         fn detach_transpose_on_leaving_edge() {
-            let mut state = State::new::<Sc>((
-                (16.0, 16.0),
-                (Sc::SCALE, Sc::SCALE),
-                AxisMask::BOTTOM.into(),
-            ))
-            .with_last_pos::<Sc>((0.0, 16.0));
+            let payload = BoundBox::new((16.0, 16.0), (Sc::SCALE, Sc::SCALE), AxisMask::BOTTOM);
+            let mut state = State::new::<Sc, _>(&payload).with_last_pos::<Sc>((0.0, 16.0));
             let scene = Scene::new(&MAP, AxisMask::NONE);
             Context::<Sc, _>::update::<AxisX>(&mut state, &scene);
 
@@ -339,12 +344,8 @@ mod tests {
 
         #[test]
         fn dont_detach_transpose_on_same_edge() {
-            let mut state = State::new::<Sc>((
-                (15.0, 16.0),
-                (Sc::SCALE, Sc::SCALE),
-                AxisMask::BOTTOM.into(),
-            ))
-            .with_last_pos::<Sc>((0.0, 16.0));
+            let payload = BoundBox::new((15.0, 16.0), (Sc::SCALE, Sc::SCALE), AxisMask::BOTTOM);
+            let mut state = State::new::<Sc, _>(&payload).with_last_pos::<Sc>((0.0, 16.0));
             let scene = Scene::new(&MAP, AxisMask::NONE);
             Context::<Sc, _>::update::<AxisX>(&mut state, &scene);
 
@@ -353,9 +354,8 @@ mod tests {
 
         #[test]
         fn dont_detach_transpose_on_next_edge() {
-            let mut state =
-                State::new::<Sc>(((16.0, 16.0), (Sc::SCALE, Sc::SCALE), AxisMask::TOP.into()))
-                    .with_last_pos::<Sc>((0.0, 16.0));
+            let payload = BoundBox::new((16.0, 16.0), (Sc::SCALE, Sc::SCALE), AxisMask::TOP);
+            let mut state = State::new::<Sc, _>(&payload).with_last_pos::<Sc>((0.0, 16.0));
 
             let scene = Scene::new(&MAP, AxisMask::NONE);
             Context::<Sc, _>::update::<AxisX>(&mut state, &scene);
