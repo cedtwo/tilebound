@@ -390,9 +390,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tilebound"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fb2b20f815517d1d235ee4961746ef70dc4ee39621d601855ff72722032fe33"
+checksum = "be47ffcdde79e8a92199cd5f718370fe9c2423371be671fcd25e367e363bedee"
 dependencies = [
  "marker_value",
  "num-traits",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "tilebound_halfslope"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bitvec",
  "macroquad",
