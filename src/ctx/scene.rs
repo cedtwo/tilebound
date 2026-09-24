@@ -44,6 +44,11 @@ impl<Sc: Scale, Map: TileMap> Scene<Sc, Map> {
         self.map.size()
     }
 
+    /// Returns `true` if the mapbound [`Endpoint`] is solid.
+    pub fn bound_is_solid<A: Axis>(&self, end: Endpoint<A>) -> bool {
+        self.map_bounds.end_is_set(end)
+    }
+
     /// Initialize an intersecting [`SliceIndex`] from a vertex. This will create a [`SliceIndex`]
     /// on the **transpose** axis for the **inverted** endpoint of the given vertex index. In
     /// practical terms, for an [`Endpoint::RIGHT`] vertex, this will return an index for the
@@ -62,8 +67,27 @@ impl<Sc: Scale, Map: TileMap> Scene<Sc, Map> {
         SliceIndex::<A::T>::try_new(t_index, range, !vertex.endpoint(), self.map.size())
     }
 
+    /// Return a [`TileMapView::View`] for indices intersecting the given `index` slice. Returns a
+    /// [`SliceIndexError`] if no index is in bounds.
+    pub fn view_index<'a, A, P>(
+        &'a self,
+        index: i32,
+        end: Endpoint<A::T>,
+        state: &State<P>,
+    ) -> Result<Map::View<'a>, SliceIndexError<A>>
+    where
+        A: Axis,
+        Sc: Scale,
+        Map: TileMapView<A>,
+    {
+        let range = state.index_range::<A::T, Sc>();
+        SliceIndex::<A>::try_new(index, range, !end, self.map.size())
+            .map(|index| self.map.view(index.t_index, index.range_cropped()))
+    }
+
     /// Return a [`TileMapInspect`] implementing type for indices intersecting the given `index`
-    /// slice. Returns a [`SliceIndexError`] if no index is in bounds.
+    /// slice. This will return a [`TileMapInspect`] type for a slice of the given `index` of axis
+    /// `A` intersecting the [`State`]. Returns a [`SliceIndexError`] if no index is in bounds.
     pub fn inspect_index<A, P, Ins>(
         &self,
         index: i32,
@@ -79,6 +103,22 @@ impl<Sc: Scale, Map: TileMap> Scene<Sc, Map> {
         let range = state.index_range::<A::T, Sc>();
         SliceIndex::<A>::try_new(index, range, !end, self.map.size())
             .map(|index| Ins::inspect(&self.map, &index))
+    }
+
+    /// Return a [`TileMapView::View`] for indices intersecting the given `vertex`. Returns a
+    /// [`SliceIndexError`] if no index is in bounds.
+    pub fn view_intersected<'a, A, P>(
+        &'a self,
+        vertex: Vertex<A>,
+        state: &State<P>,
+    ) -> Result<Map::View<'a>, SliceIndexError<A::T>>
+    where
+        A: Axis,
+        Sc: Scale,
+        Map: TileMapView<A::T>,
+    {
+        self.index_intersected(vertex, state)
+            .map(|index| self.map.view(index.t_index, index.range_cropped()))
     }
 
     /// Return a [`TileMapInspect`] implementing type for indices intersecting the given `vertex`.
